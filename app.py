@@ -298,11 +298,12 @@ def main(page: ft.Page):
     search_box = ft.TextField(
         hint_text="Buscar serie, código o categoría",
         prefix_icon=ft.Icons.SEARCH,
-        border_radius=8,
-        height=40,
-        border_color=ft.Colors.OUTLINE_VARIANT,
-        focused_border_color=ft.Colors.PRIMARY,
+        hint_style=ft.TextStyle(size=14),
         text_size=14,
+        border=ft.OutlineInputBorder(
+            border_radius=8,
+            side=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
+        ),
     )
 
     series_list_view = ft.ListView(
@@ -345,23 +346,23 @@ def main(page: ft.Page):
         for _, row in rows_to_show.iterrows():
             code_val = str(row[KNOWN_CODE_COL]).upper()
             name_val = str(row[KNOWN_NAME_COL]).upper()
+            # Bind row values now so each handler keeps its own series
+            row_values = {
+                "Código": code_val,
+                "Nombre": name_val,
+                "Categoría": str(row["Categoría de serie"]).upper(),
+                "Grupo": str(row["Grupo de serie"]).upper(),
+                "Frecuencia": str(row["Frecuencia"]).upper(),
+                "Fuente": str(row["Fuente"]).upper(),
+                "Área publica": str(row["Área que publica"]).upper(),
+            }
 
-            def make_item_clicked(code):
+            def make_item_clicked(code, values):
                 def item_clicked(e):
                     selected_code.value = code
                     # Actualizar panel de detalles
                     info_details.controls.clear()
-                    # Metadatos esenciales en formato clave-valor
-                    details_items = [
-                        ("Código", code.upper()),
-                        ("Nombre", str(row[KNOWN_NAME_COL]).upper()),
-                        ("Categoría", str(row["Categoría de serie"]).upper()),
-                        ("Grupo", str(row["Grupo de serie"]).upper()),
-                        ("Frecuencia", str(row["Frecuencia"]).upper()),
-                        ("Fuente", str(row["Fuente"]).upper()),
-                        ("Área publica", str(row["Área que publica"]).upper()),
-                    ]
-                    for label, val in details_items:
+                    for label, val in values.items():
                         info_details.controls.append(
                             ft.Row(
                                 [
@@ -385,10 +386,12 @@ def main(page: ft.Page):
                                 weight=ft.FontWeight.W_500,
                                 color=ft.Colors.ON_SURFACE,
                             ),
-                            ft.Text(
-                                f" - {name_val}",
-                                size=13,
-                                color=ft.Colors.ON_SURFACE_VARIANT,
+                            ft.Container(
+                                content=ft.Text(
+                                    f" - {name_val}",
+                                    size=13,
+                                    color=ft.Colors.ON_SURFACE_VARIANT,
+                                ),
                                 expand=True,
                             ),
                             ft.IconButton(
@@ -404,7 +407,7 @@ def main(page: ft.Page):
                     padding=ft.Padding.symmetric(horizontal=12, vertical=4),
                     border=ft.Border.only(bottom=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT)),
                     ink=True,
-                    on_click=make_item_clicked(str(row[KNOWN_CODE_COL])),
+                    on_click=make_item_clicked(str(row[KNOWN_CODE_COL]), row_values),
                 )
             )
         page.update()
@@ -417,9 +420,11 @@ def main(page: ft.Page):
             hint_text=hint,
             read_only=True,
             text_size=14,
-            border_color=ft.Colors.OUTLINE_VARIANT,
-            focused_border_color=ft.Colors.PRIMARY,
-            expand=True,
+            width=130,
+            border=ft.OutlineInputBorder(
+                border_radius=8,
+                side=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
+            ),
         )
         picker = ft.DatePicker(
             first_date=datetime(1990, 1, 1),
@@ -441,7 +446,11 @@ def main(page: ft.Page):
             tooltip="Elegir fecha",
             on_click=open_picker,
         )
-        return ft.Row([field, button], spacing=4, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+        return ft.Row(
+            [field, button],
+            spacing=4,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
 
     start_control = make_date_control("Fecha inicio")
     end_control = make_date_control("Fecha fin")
@@ -489,7 +498,7 @@ def main(page: ft.Page):
     filtro_area = make_filter_dd("Área que publica", "Área que publica")
 
     def make_filter_date(label):
-        field = ft.TextField(label=label, dense=True, read_only=True)
+        field = ft.TextField(label=label, dense=True, read_only=True, width=150)
         picker = ft.DatePicker(first_date=datetime(1900, 1, 1), last_date=datetime(2035, 12, 31))
 
         def on_pick(e):
