@@ -314,34 +314,75 @@ def main(page: ft.Page):
         auto_scroll=False,
     )
 
-    # Filtros por interruptor: cada dropdown se crea sólo al activarse.
+    # Filtros por etiqueta: el control se crea sólo al activarse.
     active_filters = {}
 
-    def make_inline_dd(label, column, key, editable=False):
+    def make_inline_dd(label, column, key):
         values = sorted(df_metadata[column].dropna().astype(str).unique())
         return ft.Dropdown(
             label=label,
             value="",
             dense=True,
-            editable=editable,
             enable_filter=True,
             options=[ft.dropdown.Option(key="", text="Todos")]
             + [ft.dropdown.Option(key=v, text=v) for v in values],
             on_select=lambda e: apply_filters(None),
         )
 
+    def make_inline_search(label, column, key):
+        """Barra de búsqueda desplegable sin cargar el índice completo.
+
+        Las sugerencias se calculan sólo al escribir y se limitan a 25, así
+        no se envía al cliente una lista de miles de opciones.
+        """
+        def apply_pick(value):
+            async def pick(e):
+                sb.value = value
+                sb.controls = []
+                try:
+                    await sb.close_view()
+                except Exception:
+                    pass
+                apply_filters(None)
+            return pick
+
+        def on_change(e):
+            q = (sb.value or "").strip().lower()
+            if len(q) < 2:
+                sb.controls = []
+                page.update()
+                return
+            vals = df_metadata[column].dropna().astype(str)
+            matches = vals[vals.str.lower().str.contains(q, regex=False)].unique()[:25]
+            sb.controls = [
+                ft.ListTile(title=ft.Text(m, size=13), dense=True, on_click=apply_pick(m))
+                for m in matches
+            ]
+            page.update()
+
+        sb = ft.SearchBar(
+            bar_hint_text=f"Buscar {label.lower()}...",
+            bar_leading=ft.Icon(ft.Icons.SEARCH),
+            controls=[],
+            on_change=on_change,
+            on_submit=lambda e: apply_filters(None),
+        )
+        return sb
+
     FILTER_SPECS = [
-        ("codigo", "Código de serie", "Código de serie", True),
-        ("nombre", "Nombre de serie", "Nombre de serie", True),
-        ("categoria", "Categoría de serie", "Categoría de serie", False),
-        ("grupo", "Grupo de serie", "Grupo de serie", True),
-        ("fuente", "Fuente", "Fuente", False),
-        ("frecuencia", "Frecuencia", "Frecuencia", False),
-        ("grupo_publicacion", "Grupo de publicación", "Grupo de publicación", False),
-        ("area", "Área que publica", "Área que publica", False),
+        # Identificación (búsqueda, sin índice)
+        ("codigo", "Código de serie", "Código de serie", "search"),
+        ("nombre", "Nombre de serie", "Nombre de serie", "search"),
+        # Clasificación (listas desplegables)
+        ("categoria", "Categoría de serie", "Categoría de serie", "dropdown"),
+        ("grupo", "Grupo de serie", "Grupo de serie", "dropdown"),
+        ("fuente", "Fuente", "Fuente", "dropdown"),
+        ("frecuencia", "Frecuencia", "Frecuencia", "dropdown"),
+        ("grupo_publicacion", "Grupo de publicación", "Grupo de publicación", "dropdown"),
+        ("area", "Área que publica", "Área que publica", "dropdown"),
     ]
 
-    def make_filter_block(key, label, column, editable):
+    def make_filter_block(key, label, column, kind):
         holder = ft.Container(visible=False)
         label_text = ft.Text(
             label,
@@ -370,20 +411,32 @@ def main(page: ft.Page):
                 chip.bgcolor = ft.Colors.SURFACE
                 chip.border = ft.Border.all(1, ft.Colors.OUTLINE_VARIANT)
 
-        def on_label_click(e):
+        async def on_label_click(e):
             if key in active_filters:
-                # desactivar: quitar filtro y ocultar desplegable
+                # desactivar: quitar filtro y ocultar el control
                 holder.content = None
                 holder.visible = False
                 active_filters.pop(key, None)
                 set_selected(False)
                 apply_filters(None)
             else:
-                # activar: crear desplegable sólo ahora
-                dd = make_inline_dd(label, column, key, editable)
-                holder.content = dd
+                # activar: crear el control sólo ahora
+                if kind == "search":
+                    control = make_inline_search(label, column, key)
+                    holder.content = control
+                    holder.visible = True
+                    active_filters[key] = control
+                    set_selected(True)
+                    page.update()
+                    try:
+                        await control.open_view()
+                    except Exception:
+                        pass
+                    return
+                control = make_inline_dd(label, column, key)
+                holder.content = control
                 holder.visible = True
-                active_filters[key] = dd
+                active_filters[key] = control
                 set_selected(True)
             page.update()
 
