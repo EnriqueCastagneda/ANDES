@@ -21,12 +21,23 @@ HEADERS = {
 
 
 def _is_blocked_response(resp):
-    """Detect CDN/rate-limit blocks that return HTML instead of data."""
+    """Detect CDN/rate-limit blocks that return HTML instead of data.
+
+    BCRP serves valid JSON with a misleading ``Content-Type: text/html``,
+    so a body that parses as JSON is never treated as a block page.
+    """
+    body = resp.text.lstrip()
+    if body.startswith("{") or body.startswith("["):
+        try:
+            resp.json()
+            return False
+        except ValueError:
+            pass
     content_type = (resp.headers.get("Content-Type") or "").lower()
     if "text/html" in content_type:
         return True
-    body = resp.text[:200].lstrip()
-    return body.startswith("<!DOCTYPE html>") or body.startswith("<html")
+    head = body[:200]
+    return head.startswith("<!DOCTYPE html>") or head.startswith("<html")
 
 
 def _http_get_json(url, max_retries=3, timeout=30):

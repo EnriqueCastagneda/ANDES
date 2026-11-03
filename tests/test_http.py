@@ -15,10 +15,19 @@ class TestIsBlockedResponse(unittest.TestCase):
     """Tests for CDN block page detection."""
 
     def test_detects_html_content_type(self):
-        """Test that HTML content-type is detected as blocked."""
+        """Test that HTML content-type with an HTML body is detected as blocked."""
         resp = MagicMock()
         resp.headers = {"Content-Type": "text/html; charset=UTF-8"}
+        resp.text = '<html><body>blocked by CDN</body></html>'
         self.assertTrue(_is_blocked_response(resp))
+
+    def test_allows_json_body_with_html_content_type(self):
+        """BCRP serves valid JSON with a misleading text/html content type."""
+        resp = MagicMock()
+        resp.headers = {"Content-Type": "text/html; charset=UTF-8"}
+        resp.text = '{"config": {"series": []}, "periods": [{"name": "Ene.2024", "values": ["1"]}]}'
+        resp.json.return_value = {"config": {"series": []}, "periods": [{"name": "Ene.2024", "values": ["1"]}]}
+        self.assertFalse(_is_blocked_response(resp))
 
     def test_allows_json_content_type(self):
         """Test that JSON content-type is allowed."""
