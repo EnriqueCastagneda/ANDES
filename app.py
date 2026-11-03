@@ -343,22 +343,52 @@ def main(page: ft.Page):
 
     def make_filter_block(key, label, column, editable):
         holder = ft.Container(visible=False)
+        label_text = ft.Text(
+            label,
+            size=13,
+            color=ft.Colors.ON_SURFACE_VARIANT,
+            weight=ft.FontWeight.W_500,
+        )
+        chip = ft.Container(
+            content=label_text,
+            padding=ft.Padding.symmetric(horizontal=10, vertical=6),
+            border_radius=16,
+            bgcolor=ft.Colors.SURFACE,
+            border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
+            ink=True,
+        )
 
-        def on_toggle(e):
-            if e.control.value:
+        def set_selected(selected):
+            if selected:
+                label_text.color = ft.Colors.ON_PRIMARY
+                label_text.weight = ft.FontWeight.W_600
+                chip.bgcolor = ft.Colors.PRIMARY
+                chip.border = ft.Border.all(1, ft.Colors.PRIMARY)
+            else:
+                label_text.color = ft.Colors.ON_SURFACE_VARIANT
+                label_text.weight = ft.FontWeight.W_500
+                chip.bgcolor = ft.Colors.SURFACE
+                chip.border = ft.Border.all(1, ft.Colors.OUTLINE_VARIANT)
+
+        def on_label_click(e):
+            if key in active_filters:
+                # desactivar: quitar filtro y ocultar desplegable
+                holder.content = None
+                holder.visible = False
+                active_filters.pop(key, None)
+                set_selected(False)
+                apply_filters(None)
+            else:
+                # activar: crear desplegable sólo ahora
                 dd = make_inline_dd(label, column, key, editable)
                 holder.content = dd
                 holder.visible = True
                 active_filters[key] = dd
-            else:
-                holder.content = None
-                holder.visible = False
-                active_filters.pop(key, None)
-                apply_filters(None)
+                set_selected(True)
             page.update()
 
-        switch = ft.Switch(label=label, value=False, on_change=on_toggle)
-        return ft.Column([switch, holder], spacing=2)
+        chip.on_click = on_label_click
+        return ft.Column([chip, holder], spacing=4)
 
     filter_blocks = [make_filter_block(*spec) for spec in FILTER_SPECS]
 
