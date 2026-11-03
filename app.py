@@ -408,13 +408,13 @@ def main(page: ft.Page):
         holder = ft.Container(visible=False)
         label_text = ft.Text(
             label,
-            size=12,
+            size=11,
             color=MUTED,
             weight=ft.FontWeight.W_500,
         )
         chip = ft.Container(
             content=label_text,
-            padding=ft.Padding.symmetric(horizontal=12, vertical=7),
+            padding=ft.Padding.symmetric(horizontal=10, vertical=6),
             border_radius=20,
             bgcolor=SURFACE_2,
             border=ft.Border.all(1, BORDER),
@@ -966,13 +966,13 @@ def main(page: ft.Page):
     # Construir lista al iniciar
     build_listbox(df_metadata)
 
-    # Filtros: etiquetas que revelan su control bajo demanda
-    filters_grid = ft.ResponsiveRow(filter_blocks, spacing=8, run_spacing=6)
+    # Filtros: 2 filas de 4 etiquetas; al desplegar, la fila baja crece
+    filters_grid = ft.ResponsiveRow(filter_blocks, spacing=8, run_spacing=8)
     for block in filters_grid.controls:
-        block.col = {"xs": 12, "sm": 6}
+        block.col = {"xs": 6, "sm": 3}
 
     filters_grid_box = ft.Container(
-        content=ft.Column([filters_grid], scroll=ft.ScrollMode.AUTO, height=176),
+        content=filters_grid,
         padding=ft.Padding.symmetric(horizontal=2, vertical=2),
     )
 
