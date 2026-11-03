@@ -511,7 +511,12 @@ def main(page: ft.Page):
                 "Frecuencia": str(row["Frecuencia"]).upper(),
                 "Fuente": str(row["Fuente"]).upper(),
                 "Área publica": str(row["Área que publica"]).upper(),
+                "Inicio": str(row["Fecha de inicio"]),
+                "Fin": str(row["Fecha de fin"]),
+                "Unidad": str(row["Unidad de medida"]),
+                "Descripción": "" if str(row["Descripción de la serie"]).lower() in ("nan", "none", "") else str(row["Descripción de la serie"]),
             }
+            long_keys = ("Descripción",)
 
             card = ft.Container(
                 content=ft.Row(
@@ -587,7 +592,7 @@ def main(page: ft.Page):
                         ft.Divider(height=12, thickness=1, color=BORDER)
                     )
                     for label, val in values.items():
-                        if label in ("Código", "Nombre", "Frecuencia"):
+                        if label in ("Código", "Nombre", "Frecuencia") or label in long_keys:
                             continue
                         info_details.controls.append(
                             ft.Row(
@@ -602,6 +607,22 @@ def main(page: ft.Page):
                                     ),
                                 ],
                                 spacing=8,
+                            )
+                        )
+                    # Texto largo a todo el ancho (crece con la ventana)
+                    if values.get("Descripción"):
+                        info_details.controls.append(
+                            ft.Divider(height=8, thickness=1, color=BORDER)
+                        )
+                        info_details.controls.append(
+                            ft.Text("Descripción", size=11, weight=ft.FontWeight.W_600, color=MUTED)
+                        )
+                        info_details.controls.append(
+                            ft.Text(
+                                values["Descripción"],
+                                size=12,
+                                color=TEXT,
+                                selectable=True,
                             )
                         )
                     page.update()
@@ -710,6 +731,7 @@ def main(page: ft.Page):
         ],
         spacing=6,
         scroll=ft.ScrollMode.AUTO,
+        expand=True,
     )
 
     # --- Filtros avanzados: sólo fechas ---
@@ -1035,7 +1057,12 @@ def main(page: ft.Page):
     )
 
     page.add(
-        ft.Row([left_panel, right_panel], spacing=16, expand=True),
+        ft.Row(
+            [left_panel, right_panel],
+            spacing=16,
+            expand=True,
+            vertical_alignment=ft.CrossAxisAlignment.STRETCH,
+        ),
     )
 
 
