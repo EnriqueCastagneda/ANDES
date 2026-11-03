@@ -405,7 +405,10 @@ def main(page: ft.Page):
     ]
 
     def make_filter_block(key, label, column, kind):
-        holder = ft.Container(visible=False)
+        holder = ft.Container(
+            visible=False,
+            padding=ft.Padding.only(top=10, bottom=6, left=2, right=2),
+        )
         label_text = ft.Text(
             label,
             size=11,
@@ -471,7 +474,7 @@ def main(page: ft.Page):
             page.update()
 
         chip.on_click = on_label_click
-        return ft.Column([chip, holder], spacing=4)
+        return ft.Column([chip, holder], spacing=0)
 
     filter_blocks = [make_filter_block(*spec) for spec in FILTER_SPECS]
 
@@ -967,7 +970,7 @@ def main(page: ft.Page):
     build_listbox(df_metadata)
 
     # Filtros: 2 filas de 4 etiquetas; al desplegar, la fila baja crece
-    filters_grid = ft.ResponsiveRow(filter_blocks, spacing=8, run_spacing=8)
+    filters_grid = ft.ResponsiveRow(filter_blocks, spacing=10, run_spacing=16)
     for block in filters_grid.controls:
         block.col = {"xs": 6, "sm": 3}
 
