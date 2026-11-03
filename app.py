@@ -314,16 +314,28 @@ def main(page: ft.Page):
         auto_scroll=False,
     )
 
-    # Menú de categorías
-    category_dd = ft.Dropdown(
-        label="Categoría",
-        value="Todas",
-        options=[ft.dropdown.Option(key="Todas", text="Todas las categorías")]
-        + [
-            ft.dropdown.Option(key=c, text=f"{c} ({n})")
-            for c, n in df_metadata["Categoría de serie"].value_counts().items()
-        ],
-    )
+    # Menús desplegables de filtro (uno por campo)
+    def make_inline_dd(label, column, editable=False):
+        values = sorted(df_metadata[column].dropna().astype(str).unique())
+        return ft.Dropdown(
+            label=label,
+            value="",
+            dense=True,
+            editable=editable,
+            enable_filter=True,
+            options=[ft.dropdown.Option(key="", text="Todos")]
+            + [ft.dropdown.Option(key=v, text=v) for v in values],
+            on_select=lambda e: apply_filters(None),
+        )
+
+    filtro_codigo = make_inline_dd("Código de serie", "Código de serie", editable=True)
+    filtro_nombre = make_inline_dd("Nombre de serie", "Nombre de serie", editable=True)
+    filtro_categoria = make_inline_dd("Categoría de serie", "Categoría de serie")
+    filtro_grupo = make_inline_dd("Grupo de serie", "Grupo de serie", editable=True)
+    filtro_fuente = make_inline_dd("Fuente", "Fuente")
+    filtro_frecuencia = make_inline_dd("Frecuencia", "Frecuencia")
+    filtro_grupo_pub = make_inline_dd("Grupo de publicación", "Grupo de publicación")
+    filtro_area = make_inline_dd("Área que publica", "Área que publica")
 
     def make_item_download(code):
         def item_download(e):
@@ -475,29 +487,7 @@ def main(page: ft.Page):
         scroll=ft.ScrollMode.AUTO,
     )
 
-    # --- Menú de filtros avanzados ---
-    filtro_codigo = ft.TextField(label="Código de serie", dense=True)
-    filtro_nombre = ft.TextField(label="Nombre de serie", dense=True)
-    filtro_grupo = ft.TextField(label="Grupo de serie", dense=True)
-    filtro_inicio = ft.TextField(label="Fecha de inicio (ej. Ene-1992)", dense=True)
-    filtro_fin = ft.TextField(label="Fecha de fin (ej. Dic-2025)", dense=True)
-
-    def make_filter_dd(label, column, extra_blank="Todas"):
-        values = sorted(df_metadata[column].dropna().astype(str).unique())
-        return ft.Dropdown(
-            label=label,
-            value=extra_blank,
-            dense=True,
-            options=[ft.dropdown.Option(key=extra_blank, text=extra_blank)]
-            + [ft.dropdown.Option(key=v, text=v) for v in values],
-        )
-
-    filtro_categoria = make_filter_dd("Categoría de serie", "Categoría de serie")
-    filtro_fuente = make_filter_dd("Fuente", "Fuente")
-    filtro_frecuencia = make_filter_dd("Frecuencia", "Frecuencia")
-    filtro_grupo_pub = make_filter_dd("Grupo de publicación", "Grupo de publicación")
-    filtro_area = make_filter_dd("Área que publica", "Área que publica")
-
+    # --- Filtros avanzados: sólo fechas ---
     def make_filter_date(label):
         field = ft.TextField(label=label, dense=True, read_only=True, width=150)
         picker = ft.DatePicker(first_date=datetime(1900, 1, 1), last_date=datetime(2035, 12, 31))
@@ -516,13 +506,26 @@ def main(page: ft.Page):
     filtro_actual_desde = make_filter_date("Actualización desde")
     filtro_actual_hasta = make_filter_date("Actualización hasta")
 
-    # Función de búsqueda reactiva (respeta la categoría y los filtros)
-    def search_changed(e):
+    def gather_filters():
+        return {
+            "codigo": filtro_codigo.value,
+            "nombre": filtro_nombre.value,
+            "grupo": filtro_grupo.value,
+            "categoria": filtro_categoria.value,
+            "fuente": filtro_fuente.value,
+            "frecuencia": filtro_frecuencia.value,
+            "grupo_publicacion": filtro_grupo_pub.value,
+            "area": filtro_area.value,
+            "creacion_desde": filtro_creacion_desde.controls[0].value,
+            "creacion_hasta": filtro_creacion_hasta.controls[0].value,
+            "actual_desde": filtro_actual_desde.controls[0].value,
+            "actual_hasta": filtro_actual_hasta.controls[0].value,
+        }
+
+    # Aplica filtros de los desplegables + búsqueda de texto
+    def apply_filters(e):
+        df = filter_metadata(df_metadata, gather_filters())
         query = search_box.value.strip().lower()
-        category = category_dd.value
-        df = df_metadata
-        if category and category != "Todas":
-            df = df[df["Categoría de serie"] == category]
         if query:
             mask = df.apply(
                 lambda r: query in str(r[KNOWN_CODE_COL]) or query in str(r[KNOWN_NAME_COL]),
@@ -531,8 +534,7 @@ def main(page: ft.Page):
             df = df[mask]
         build_listbox(df)
 
-    search_box.on_change = search_changed
-    category_dd.on_select = search_changed
+    search_box.on_change = apply_filters
 
     # Descarga de una serie (reutilizada por el botón y por cada fila)
     def do_download(code):
@@ -604,38 +606,8 @@ def main(page: ft.Page):
         height=40,
     )
 
-    # --- Menú de filtros avanzados (diálogo) ---
-    def gather_filters():
-        return {
-            "codigo": filtro_codigo.value,
-            "nombre": filtro_nombre.value,
-            "grupo": filtro_grupo.value,
-            "inicio": filtro_inicio.value,
-            "fin": filtro_fin.value,
-            "categoria": filtro_categoria.value,
-            "fuente": filtro_fuente.value,
-            "frecuencia": filtro_frecuencia.value,
-            "grupo_publicacion": filtro_grupo_pub.value,
-            "area": filtro_area.value,
-            "creacion_desde": filtro_creacion_desde.controls[0].value,
-            "creacion_hasta": filtro_creacion_hasta.controls[0].value,
-            "actual_desde": filtro_actual_desde.controls[0].value,
-            "actual_hasta": filtro_actual_hasta.controls[0].value,
-        }
-
-    def apply_filters(e):
-        df = filter_metadata(df_metadata, gather_filters())
-        # resetear el buscador y el desplegable de categoría rápido
-        search_box.value = ""
-        category_dd.value = "Todas"
-        build_listbox(df)
-        page.pop_dialog()
-
+    # --- Menú de filtros avanzados: sólo fechas ---
     def clear_filters(e):
-        for f in (filtro_codigo, filtro_nombre, filtro_grupo, filtro_inicio, filtro_fin):
-            f.value = ""
-        for d in (filtro_categoria, filtro_fuente, filtro_frecuencia, filtro_grupo_pub, filtro_area):
-            d.value = "Todas"
         for dc in (filtro_creacion_desde, filtro_creacion_hasta, filtro_actual_desde, filtro_actual_hasta):
             dc.controls[0].value = ""
         page.update()
@@ -643,6 +615,13 @@ def main(page: ft.Page):
     def download_listing(e):
         """Exporta el listado filtrado (metadatos) en el formato elegido."""
         df = filter_metadata(df_metadata, gather_filters())
+        query = search_box.value.strip().lower()
+        if query:
+            mask = df.apply(
+                lambda r: query in str(r[KNOWN_CODE_COL]) or query in str(r[KNOWN_NAME_COL]),
+                axis=1,
+            )
+            df = df[mask]
         if df.empty:
             notify("No hay resultados para descargar", ft.Colors.AMBER)
             return
@@ -656,34 +635,30 @@ def main(page: ft.Page):
             return
         notify(f"Guardado: {filepath} ({len(df)} series)", ft.Colors.GREEN)
 
+    def apply_advanced(e):
+        apply_filters(None)
+        page.pop_dialog()
+
     filter_dialog = ft.AlertDialog(
         modal=True,
-        title=ft.Text("Filtros de series", size=18, weight=ft.FontWeight.W_600),
+        title=ft.Text("Filtros por fecha", size=18, weight=ft.FontWeight.W_600),
         content=ft.Container(
-            width=520,
+            width=360,
             content=ft.Column(
                 [
-                    filtro_codigo,
-                    filtro_nombre,
-                    filtro_grupo,
-                    filtro_categoria,
-                    filtro_grupo_pub,
-                    filtro_fuente,
-                    filtro_frecuencia,
-                    filtro_area,
-                    ft.Row([filtro_inicio, filtro_fin], spacing=12),
+                    ft.Text("Rango de creación", size=12, color=ft.Colors.ON_SURFACE_VARIANT),
                     ft.Row([filtro_creacion_desde, filtro_creacion_hasta], spacing=12),
+                    ft.Text("Rango de actualización", size=12, color=ft.Colors.ON_SURFACE_VARIANT),
                     ft.Row([filtro_actual_desde, filtro_actual_hasta], spacing=12),
                 ],
                 spacing=10,
                 scroll=ft.ScrollMode.AUTO,
-                height=420,
             ),
         ),
         actions=[
             ft.TextButton("Limpiar", on_click=clear_filters),
             ft.TextButton("Descargar listado", icon=ft.Icons.FILTER_LIST, on_click=download_listing),
-            ft.Button("Aplicar", on_click=apply_filters),
+            ft.Button("Aplicar", on_click=apply_advanced),
         ],
         actions_alignment=ft.MainAxisAlignment.END,
     )
@@ -692,7 +667,7 @@ def main(page: ft.Page):
         page.show_dialog(filter_dialog)
 
     filter_btn = ft.OutlinedButton(
-        content="Filtros avanzados",
+        content="Filtros avanzados (fechas)",
         icon=ft.Icons.FILTER_ALT,
         on_click=open_filters,
         height=40,
@@ -701,6 +676,24 @@ def main(page: ft.Page):
     # Construir lista al iniciar
     build_listbox(df_metadata)
 
+    # Filtros: una lista desplegable por campo, en cuadrícula de dos columnas
+    filters_grid = ft.ResponsiveRow(
+        [
+            filtro_codigo,
+            filtro_nombre,
+            filtro_categoria,
+            filtro_grupo,
+            filtro_fuente,
+            filtro_frecuencia,
+            filtro_grupo_pub,
+            filtro_area,
+        ],
+        spacing=8,
+        run_spacing=8,
+    )
+    for dd in filters_grid.controls:
+        dd.col = {"xs": 12, "sm": 6}
+
     # Layout principal: split vista abierta estilo "open plane"
     # Panel izquierdo: catálogo (60%)
     left_panel = ft.Container(
@@ -708,11 +701,11 @@ def main(page: ft.Page):
             [
                 ft.Text("Catálogo de Series", size=20, weight=ft.FontWeight.W_600, color=ft.Colors.ON_SURFACE),
                 ft.Container(
-                    content=category_dd,
+                    content=search_box,
                     padding=ft.Padding.only(bottom=4),
                 ),
                 ft.Container(
-                    content=search_box,
+                    content=filters_grid,
                     padding=ft.Padding.only(bottom=4),
                 ),
                 ft.Container(
