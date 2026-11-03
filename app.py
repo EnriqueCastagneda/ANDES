@@ -269,13 +269,27 @@ def export_table(df, basename, fmt, out_dir=None):
 
 
 def main(page: ft.Page):
+    # --- Design tokens: dark SaaS / Bento ---
+    BG = "#0b0b0d"
+    SURFACE = "#18181b"
+    SURFACE_2 = "#27272a"
+    SURFACE_3 = "#323238"
+    BORDER = ft.Colors.with_opacity(0.10, ft.Colors.WHITE)
+    ACCENT = "#3b82f6"
+    ACCENT_SOFT = "#3b82f626"
+    ACCENT_BORDER = "#3b82f666"
+    TEXT = "#fafafa"
+    MUTED = "#a1a1aa"
+    RADIUS = 16
+
     page.title = "BCRP Data Extractor"
-    page.theme_mode = ft.ThemeMode.SYSTEM
-    page.window.width = 1100
-    page.window.height = 720
-    page.window.min_width = 900
-    page.window.min_height = 600
-    page.padding = 0
+    page.theme_mode = ft.ThemeMode.DARK
+    page.bgcolor = BG
+    page.window.width = 1180
+    page.window.height = 760
+    page.window.min_width = 980
+    page.window.min_height = 640
+    page.padding = 20
     page.vertical_alignment = ft.MainAxisAlignment.START
 
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -293,18 +307,26 @@ def main(page: ft.Page):
 
     # Estado reactivo
     selected_code = ft.Text(value="", visible=False)
+    selected_row = {"container": None}
 
     # --- Panel Izquierdo: Catálogo ---
-    # Barra de búsqueda minimalista
+    # Buscador flotante con icono y foco acentuado
     search_box = ft.TextField(
-        hint_text="Buscar serie, código o categoría",
+        hint_text="Buscar serie, código o categoría…",
         prefix_icon=ft.Icons.SEARCH,
-        hint_style=ft.TextStyle(size=14),
         text_size=14,
-        border=ft.OutlineInputBorder(
-            border_radius=8,
-            side=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
-        ),
+        filled=True,
+        fill_color=SURFACE_2,
+        content_padding=ft.Padding.symmetric(horizontal=14, vertical=12),
+        hint_style=ft.TextStyle(size=14, color=MUTED),
+        border={
+            ft.ControlState.DEFAULT: ft.OutlineInputBorder(
+                border_radius=14, side=ft.BorderSide(1, BORDER)
+            ),
+            ft.ControlState.FOCUSED: ft.OutlineInputBorder(
+                border_radius=14, side=ft.BorderSide(1, ACCENT)
+            ),
+        },
     )
 
     series_list_view = ft.ListView(
@@ -386,30 +408,38 @@ def main(page: ft.Page):
         holder = ft.Container(visible=False)
         label_text = ft.Text(
             label,
-            size=13,
-            color=ft.Colors.ON_SURFACE_VARIANT,
+            size=12,
+            color=MUTED,
             weight=ft.FontWeight.W_500,
         )
         chip = ft.Container(
             content=label_text,
-            padding=ft.Padding.symmetric(horizontal=10, vertical=6),
-            border_radius=16,
-            bgcolor=ft.Colors.SURFACE,
-            border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
+            padding=ft.Padding.symmetric(horizontal=12, vertical=7),
+            border_radius=20,
+            bgcolor=SURFACE_2,
+            border=ft.Border.all(1, BORDER),
             ink=True,
+            animate=ft.Animation(140, ft.AnimationCurve.EASE_OUT),
         )
 
         def set_selected(selected):
             if selected:
-                label_text.color = ft.Colors.ON_PRIMARY
+                label_text.color = "#ffffff"
                 label_text.weight = ft.FontWeight.W_600
-                chip.bgcolor = ft.Colors.PRIMARY
-                chip.border = ft.Border.all(1, ft.Colors.PRIMARY)
+                chip.bgcolor = ACCENT
+                chip.border = ft.Border.all(1, ACCENT)
             else:
-                label_text.color = ft.Colors.ON_SURFACE_VARIANT
+                label_text.color = MUTED
                 label_text.weight = ft.FontWeight.W_500
-                chip.bgcolor = ft.Colors.SURFACE
-                chip.border = ft.Border.all(1, ft.Colors.OUTLINE_VARIANT)
+                chip.bgcolor = SURFACE_2
+                chip.border = ft.Border.all(1, BORDER)
+
+        def on_hover(e):
+            if key not in active_filters:
+                chip.bgcolor = SURFACE_3 if e.data == "true" else SURFACE_2
+                page.update()
+
+        chip.on_hover = on_hover
 
         async def on_label_click(e):
             if key in active_filters:
@@ -454,9 +484,14 @@ def main(page: ft.Page):
 
     def build_listbox(df: pd.DataFrame):
         series_list_view.controls.clear()
+        selected_row["container"] = None
         if df.empty:
             series_list_view.controls.append(
-                ft.Text("No se encontraron resultados", size=12, color=ft.Colors.ON_SURFACE_VARIANT)
+                ft.Container(
+                    content=ft.Text("No se encontraron resultados", size=13, color=MUTED),
+                    padding=ft.Padding.symmetric(vertical=24, horizontal=12),
+                    alignment=ft.Alignment.CENTER,
+                )
             )
             page.update()
             return
@@ -478,59 +513,111 @@ def main(page: ft.Page):
                 "Área publica": str(row["Área que publica"]).upper(),
             }
 
-            def make_item_clicked(code, values):
+            card = ft.Container(
+                content=ft.Row(
+                    [
+                        ft.Container(
+                            content=ft.Text(
+                                code_val,
+                                size=11,
+                                weight=ft.FontWeight.W_600,
+                                color="#bfdbfe",
+                            ),
+                            bgcolor=ACCENT_SOFT,
+                            border=ft.Border.all(1, ACCENT_BORDER),
+                            border_radius=8,
+                            padding=ft.Padding.symmetric(horizontal=8, vertical=3),
+                        ),
+                        ft.Container(
+                            content=ft.Text(name_val, size=13, color=TEXT),
+                            expand=True,
+                        ),
+                        ft.IconButton(
+                            icon=ft.Icons.DOWNLOAD,
+                            icon_size=18,
+                            icon_color=MUTED,
+                            tooltip="Descargar esta serie",
+                            on_click=make_item_download(str(row[KNOWN_CODE_COL])),
+                        ),
+                    ],
+                    spacing=10,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                padding=ft.Padding.symmetric(horizontal=12, vertical=10),
+                bgcolor=SURFACE_2,
+                border=ft.Border.all(1, BORDER),
+                border_radius=12,
+                ink=True,
+                animate=ft.Animation(140, ft.AnimationCurve.EASE_OUT),
+            )
+
+            def make_item_clicked(code, values, card_ref):
                 def item_clicked(e):
                     selected_code.value = code
-                    # Actualizar panel de detalles
+                    # Feedback inmediato: resaltar la tarjeta elegida
+                    prev = selected_row["container"]
+                    if prev is not None:
+                        prev.bgcolor = SURFACE_2
+                        prev.border = ft.Border.all(1, BORDER)
+                    selected_row["container"] = card_ref
+                    card_ref.bgcolor = SURFACE_3
+                    card_ref.border = ft.Border.all(1, ACCENT)
+
+                    # Inspector estructurado clave-valor
                     info_details.controls.clear()
+                    info_details.controls.append(
+                        ft.Row(
+                            [
+                                ft.Text(values["Código"], size=16, weight=ft.FontWeight.W_600, color=TEXT),
+                                ft.Container(expand=True),
+                                ft.Container(
+                                    content=ft.Text(values["Frecuencia"], size=10, color="#bfdbfe"),
+                                    bgcolor=ACCENT_SOFT,
+                                    border_radius=6,
+                                    padding=ft.Padding.symmetric(horizontal=8, vertical=2),
+                                ),
+                            ],
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        )
+                    )
+                    info_details.controls.append(
+                        ft.Text(values["Nombre"], size=12, color=MUTED)
+                    )
+                    info_details.controls.append(
+                        ft.Divider(height=12, thickness=1, color=BORDER)
+                    )
                     for label, val in values.items():
+                        if label in ("Código", "Nombre", "Frecuencia"):
+                            continue
                         info_details.controls.append(
                             ft.Row(
                                 [
-                                    ft.Text(f"{label}:", size=12, weight=ft.FontWeight.W_500, color=ft.Colors.ON_SURFACE_VARIANT),
-                                    ft.Text(val, size=12, color=ft.Colors.ON_SURFACE),
+                                    ft.Container(
+                                        content=ft.Text(label, size=12, color=MUTED),
+                                        width=110,
+                                    ),
+                                    ft.Container(
+                                        content=ft.Text(val, size=12, color=TEXT),
+                                        expand=True,
+                                    ),
                                 ],
-                                spacing=4,
+                                spacing=8,
                             )
                         )
                     page.update()
                 return item_clicked
 
-            # Fondo plano con hover sutil, con botón de descarga directa
-            series_list_view.controls.append(
-                ft.Container(
-                    content=ft.Row(
-                        [
-                            ft.Text(
-                                f"{code_val}",
-                                size=13,
-                                weight=ft.FontWeight.W_500,
-                                color=ft.Colors.ON_SURFACE,
-                            ),
-                            ft.Container(
-                                content=ft.Text(
-                                    f" - {name_val}",
-                                    size=13,
-                                    color=ft.Colors.ON_SURFACE_VARIANT,
-                                ),
-                                expand=True,
-                            ),
-                            ft.IconButton(
-                                icon=ft.Icons.DOWNLOAD,
-                                icon_size=18,
-                                tooltip="Descargar esta serie",
-                                on_click=make_item_download(str(row[KNOWN_CODE_COL])),
-                            ),
-                        ],
-                        spacing=6,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                    ),
-                    padding=ft.Padding.symmetric(horizontal=12, vertical=4),
-                    border=ft.Border.only(bottom=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT)),
-                    ink=True,
-                    on_click=make_item_clicked(str(row[KNOWN_CODE_COL]), row_values),
-                )
-            )
+            def make_hover(card_ref):
+                def on_hover(e):
+                    if selected_row["container"] is card_ref:
+                        return
+                    card_ref.bgcolor = SURFACE_3 if e.data == "true" else SURFACE_2
+                    page.update()
+                return on_hover
+
+            card.on_hover = make_hover(card)
+            card.on_click = make_item_clicked(str(row[KNOWN_CODE_COL]), row_values, card)
+            series_list_view.controls.append(card)
         page.update()
 
     # Construir lista al iniciar (tras declarar info_details)
@@ -540,12 +627,20 @@ def main(page: ft.Page):
         field = ft.TextField(
             hint_text=hint,
             read_only=True,
-            text_size=14,
+            text_size=13,
             width=130,
-            border=ft.OutlineInputBorder(
-                border_radius=8,
-                side=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
-            ),
+            filled=True,
+            fill_color=SURFACE_2,
+            content_padding=ft.Padding.symmetric(horizontal=12, vertical=11),
+            hint_style=ft.TextStyle(size=13, color=MUTED),
+            border={
+                ft.ControlState.DEFAULT: ft.OutlineInputBorder(
+                    border_radius=12, side=ft.BorderSide(1, BORDER)
+                ),
+                ft.ControlState.FOCUSED: ft.OutlineInputBorder(
+                    border_radius=12, side=ft.BorderSide(1, ACCENT)
+                ),
+            },
         )
         picker = ft.DatePicker(
             first_date=datetime(1990, 1, 1),
@@ -564,12 +659,14 @@ def main(page: ft.Page):
 
         button = ft.IconButton(
             icon=ft.Icons.CALENDAR_MONTH,
+            icon_size=18,
+            icon_color=MUTED,
             tooltip="Elegir fecha",
             on_click=open_picker,
         )
         return ft.Row(
             [field, button],
-            spacing=4,
+            spacing=2,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
@@ -585,19 +682,55 @@ def main(page: ft.Page):
         label="Formato",
         value="CSV",
         width=140,
+        dense=True,
+        filled=True,
+        fill_color=SURFACE_2,
         options=[ft.dropdown.Option(key=k, text=k) for k in EXPORT_FORMATS],
+        border={
+            ft.ControlState.DEFAULT: ft.OutlineInputBorder(
+                border_radius=12, side=ft.BorderSide(1, BORDER)
+            ),
+            ft.ControlState.FOCUSED: ft.OutlineInputBorder(
+                border_radius=12, side=ft.BorderSide(1, ACCENT)
+            ),
+        },
     )
 
-    # Panel de detalles - tipo inspector minimalista
+    # Panel de detalles - inspector estructurado clave-valor
     info_details = ft.Column(
-        [ft.Text("Selecciona una serie para ver sus metadatos", size=12, color=ft.Colors.ON_SURFACE_VARIANT)],
-        spacing=4,
+        [
+            ft.Container(
+                content=ft.Text(
+                    "Selecciona una serie para ver sus metadatos",
+                    size=12,
+                    color=MUTED,
+                ),
+                padding=ft.Padding.symmetric(vertical=8),
+            )
+        ],
+        spacing=6,
         scroll=ft.ScrollMode.AUTO,
     )
 
     # --- Filtros avanzados: sólo fechas ---
     def make_filter_date(label):
-        field = ft.TextField(label=label, dense=True, read_only=True, width=150)
+        field = ft.TextField(
+            label=label,
+            dense=True,
+            read_only=True,
+            width=150,
+            filled=True,
+            fill_color=SURFACE_2,
+            label_style=ft.TextStyle(size=11, color=MUTED),
+            border={
+                ft.ControlState.DEFAULT: ft.OutlineInputBorder(
+                    border_radius=10, side=ft.BorderSide(1, BORDER)
+                ),
+                ft.ControlState.FOCUSED: ft.OutlineInputBorder(
+                    border_radius=10, side=ft.BorderSide(1, ACCENT)
+                ),
+            },
+        )
         picker = ft.DatePicker(first_date=datetime(1900, 1, 1), last_date=datetime(2035, 12, 31))
 
         def on_pick(e):
@@ -606,8 +739,14 @@ def main(page: ft.Page):
                 page.update()
 
         picker.on_change = on_pick
-        button = ft.IconButton(icon=ft.Icons.CALENDAR_MONTH, tooltip=label, on_click=lambda e: page.show_dialog(picker))
-        return ft.Row([field, button], spacing=4, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+        button = ft.IconButton(
+            icon=ft.Icons.CALENDAR_MONTH,
+            icon_size=18,
+            icon_color=MUTED,
+            tooltip=label,
+            on_click=lambda e: page.show_dialog(picker),
+        )
+        return ft.Row([field, button], spacing=2, vertical_alignment=ft.CrossAxisAlignment.CENTER)
 
     filtro_creacion_desde = make_filter_date("Creación desde")
     filtro_creacion_hasta = make_filter_date("Creación hasta")
@@ -703,12 +842,16 @@ def main(page: ft.Page):
         content="Descargar",
         icon=ft.Icons.DOWNLOAD,
         on_click=download_click,
+        height=44,
         style=ft.ButtonStyle(
-            shape=ft.RoundedRectangleBorder(radius=8),
-            bgcolor=ft.Colors.SURFACE,
-            color=ft.Colors.ON_SURFACE,
+            shape=ft.RoundedRectangleBorder(radius=10),
+            bgcolor=ACCENT,
+            color="#ffffff",
+            elevation=4,
+            shadow_color=ACCENT_BORDER,
+            padding=ft.Padding.symmetric(horizontal=20, vertical=10),
+            text_style=ft.TextStyle(size=14, weight=ft.FontWeight.W_600),
         ),
-        height=40,
     )
 
     # --- Menú de filtros avanzados: sólo fechas ---
@@ -746,14 +889,16 @@ def main(page: ft.Page):
 
     filter_dialog = ft.AlertDialog(
         modal=True,
-        title=ft.Text("Filtros por fecha", size=18, weight=ft.FontWeight.W_600),
+        bgcolor=SURFACE,
+        shape=ft.RoundedRectangleBorder(radius=16),
+        title=ft.Text("Filtros por fecha", size=18, weight=ft.FontWeight.W_700, color=TEXT),
         content=ft.Container(
             width=360,
             content=ft.Column(
                 [
-                    ft.Text("Rango de creación", size=12, color=ft.Colors.ON_SURFACE_VARIANT),
+                    ft.Text("Rango de creación", size=11, color=MUTED),
                     ft.Row([filtro_creacion_desde, filtro_creacion_hasta], spacing=12),
-                    ft.Text("Rango de actualización", size=12, color=ft.Colors.ON_SURFACE_VARIANT),
+                    ft.Text("Rango de actualización", size=11, color=MUTED),
                     ft.Row([filtro_actual_desde, filtro_actual_hasta], spacing=12),
                 ],
                 spacing=10,
@@ -761,9 +906,22 @@ def main(page: ft.Page):
             ),
         ),
         actions=[
-            ft.TextButton("Limpiar", on_click=clear_filters),
-            ft.TextButton("Descargar listado", icon=ft.Icons.FILTER_LIST, on_click=download_listing),
-            ft.Button("Aplicar", on_click=apply_advanced),
+            ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED)),
+            ft.TextButton(
+                "Descargar listado",
+                icon=ft.Icons.FILTER_LIST,
+                on_click=download_listing,
+                style=ft.ButtonStyle(color=TEXT),
+            ),
+            ft.Button(
+                "Aplicar",
+                on_click=apply_advanced,
+                style=ft.ButtonStyle(
+                    bgcolor=ACCENT,
+                    color="#ffffff",
+                    shape=ft.RoundedRectangleBorder(radius=10),
+                ),
+            ),
         ],
         actions_alignment=ft.MainAxisAlignment.END,
     )
@@ -772,105 +930,112 @@ def main(page: ft.Page):
         page.show_dialog(filter_dialog)
 
     filter_btn = ft.OutlinedButton(
-        content="Filtros avanzados (fechas)",
+        content="Filtros por fecha",
         icon=ft.Icons.FILTER_ALT,
         on_click=open_filters,
-        height=40,
+        height=38,
+        style=ft.ButtonStyle(
+            color=TEXT,
+            side=ft.BorderSide(1, BORDER),
+            shape=ft.RoundedRectangleBorder(radius=10),
+        ),
     )
 
     # Construir lista al iniciar
     build_listbox(df_metadata)
 
-    # Filtros: interruptores que revelan su desplegable bajo demanda
+    # Filtros: etiquetas que revelan su control bajo demanda
     filters_grid = ft.ResponsiveRow(filter_blocks, spacing=8, run_spacing=6)
     for block in filters_grid.controls:
         block.col = {"xs": 12, "sm": 6}
 
     filters_grid_box = ft.Container(
-        content=ft.Column([filters_grid], scroll=ft.ScrollMode.AUTO, height=190),
-        border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
-        border_radius=8,
-        padding=ft.Padding.symmetric(horizontal=8, vertical=4),
+        content=ft.Column([filters_grid], scroll=ft.ScrollMode.AUTO, height=176),
+        padding=ft.Padding.symmetric(horizontal=2, vertical=2),
     )
 
-    # Layout principal: split vista abierta estilo "open plane"
-    # Panel izquierdo: catálogo (60%)
+    # Layout principal: dos superficies elevadas (Bento)
     left_panel = ft.Container(
         content=ft.Column(
             [
-                ft.Text("Catálogo de Series", size=20, weight=ft.FontWeight.W_600, color=ft.Colors.ON_SURFACE),
-                ft.Container(
-                    content=search_box,
-                    padding=ft.Padding.only(bottom=4),
+                ft.Row(
+                    [
+                        ft.Text("Catálogo de Series", size=18, weight=ft.FontWeight.W_700, color=TEXT),
+                        ft.Container(expand=True),
+                        ft.Text(f"{len(df_metadata):,} series", size=11, color=MUTED),
+                    ],
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
-                ft.Container(
-                    content=filters_grid_box,
-                    padding=ft.Padding.only(bottom=4),
-                ),
-                ft.Container(
-                    content=filter_btn,
-                    padding=ft.Padding.only(bottom=4),
-                ),
-                ft.Text("Resultados", size=12, color=ft.Colors.ON_SURFACE_VARIANT),
-                ft.Container(
-                    content=series_list_view,
-                    border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
-                    border_radius=8,
-                    expand=True,
-                    bgcolor=ft.Colors.SURFACE,
-                ),
+                ft.Text("Explora y filtra el catálogo del BCRP", size=12, color=MUTED),
+                search_box,
+                filters_grid_box,
+                filter_btn,
+                ft.Text("Resultados", size=12, color=MUTED),
+                ft.Container(content=series_list_view, expand=True),
             ],
+            spacing=12,
             expand=True,
         ),
         expand=3,
-        padding=ft.Padding(16, 16, 12, 16),
+        padding=18,
+        bgcolor=SURFACE,
+        border=ft.Border.all(1, BORDER),
+        border_radius=RADIUS,
     )
 
-    # Panel derecho: parámetros y detalles (40%)
+    # Panel derecho: parámetros y metadatos
+    params_card = ft.Container(
+        content=ft.Column(
+            [
+                ft.Text("Rango de fechas", size=11, color=MUTED),
+                ft.Row(
+                    [start_control, end_control],
+                    spacing=12,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                ft.Text("Formato de salida", size=11, color=MUTED),
+                ft.Row(
+                    [format_dd, download_btn],
+                    spacing=12,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+            ],
+            spacing=10,
+        ),
+        padding=14,
+        bgcolor=SURFACE_2,
+        border=ft.Border.all(1, BORDER),
+        border_radius=12,
+    )
+
     right_panel = ft.Container(
         content=ft.Column(
             [
-                ft.Text("Parámetros y Metadatos", size=20, weight=ft.FontWeight.W_600, color=ft.Colors.ON_SURFACE),
+                ft.Text("Parámetros", size=18, weight=ft.FontWeight.W_700, color=TEXT),
+                ft.Text("Define el rango y el formato de salida", size=12, color=MUTED),
+                params_card,
+                ft.Text("Detalles de la serie", size=12, color=MUTED),
                 ft.Container(
-                    content=ft.Column(
-                        [
-                            ft.Text("Rango de fechas", size=12, color=ft.Colors.ON_SURFACE_VARIANT),
-                            ft.Row(
-                                [start_control, end_control],
-                                spacing=12,
-                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                            ),
-                            ft.Row(
-                                [format_dd, download_btn],
-                                spacing=12,
-                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                            ),
-                            ft.Divider(height=24, thickness=1, color=ft.Colors.OUTLINE_VARIANT),
-                            ft.Text("Detalles de la serie", size=12, color=ft.Colors.ON_SURFACE_VARIANT),
-                            ft.Container(
-                                content=info_details,
-                                border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
-                                border_radius=8,
-                                padding=ft.Padding(12, 8),
-                                expand=True,
-                            ),
-                        ],
-                        expand=True,
-                    ),
+                    content=info_details,
+                    padding=14,
+                    bgcolor=SURFACE_2,
+                    border=ft.Border.all(1, BORDER),
+                    border_radius=12,
                     expand=True,
                 ),
             ],
+            spacing=12,
             expand=True,
         ),
         expand=2,
-        padding=ft.Padding(12, 16, 16, 16),
+        padding=18,
+        bgcolor=SURFACE,
+        border=ft.Border.all(1, BORDER),
+        border_radius=RADIUS,
     )
 
-    # Divisor vertical delgado
-    divider = ft.VerticalDivider(width=1, color=ft.Colors.OUTLINE_VARIANT, thickness=1)
-
     page.add(
-        ft.Row([left_panel, divider, right_panel], spacing=0, expand=True),
+        ft.Row([left_panel, right_panel], spacing=16, expand=True),
     )
 
 
