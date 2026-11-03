@@ -314,8 +314,10 @@ def main(page: ft.Page):
         auto_scroll=False,
     )
 
-    # Menús desplegables de filtro (uno por campo)
-    def make_inline_dd(label, column, editable=False):
+    # Filtros por interruptor: cada dropdown se crea sólo al activarse.
+    active_filters = {}
+
+    def make_inline_dd(label, column, key, editable=False):
         values = sorted(df_metadata[column].dropna().astype(str).unique())
         return ft.Dropdown(
             label=label,
@@ -328,14 +330,37 @@ def main(page: ft.Page):
             on_select=lambda e: apply_filters(None),
         )
 
-    filtro_codigo = make_inline_dd("Código de serie", "Código de serie", editable=True)
-    filtro_nombre = make_inline_dd("Nombre de serie", "Nombre de serie", editable=True)
-    filtro_categoria = make_inline_dd("Categoría de serie", "Categoría de serie")
-    filtro_grupo = make_inline_dd("Grupo de serie", "Grupo de serie", editable=True)
-    filtro_fuente = make_inline_dd("Fuente", "Fuente")
-    filtro_frecuencia = make_inline_dd("Frecuencia", "Frecuencia")
-    filtro_grupo_pub = make_inline_dd("Grupo de publicación", "Grupo de publicación")
-    filtro_area = make_inline_dd("Área que publica", "Área que publica")
+    FILTER_SPECS = [
+        ("codigo", "Código de serie", "Código de serie", True),
+        ("nombre", "Nombre de serie", "Nombre de serie", True),
+        ("categoria", "Categoría de serie", "Categoría de serie", False),
+        ("grupo", "Grupo de serie", "Grupo de serie", True),
+        ("fuente", "Fuente", "Fuente", False),
+        ("frecuencia", "Frecuencia", "Frecuencia", False),
+        ("grupo_publicacion", "Grupo de publicación", "Grupo de publicación", False),
+        ("area", "Área que publica", "Área que publica", False),
+    ]
+
+    def make_filter_block(key, label, column, editable):
+        holder = ft.Container(visible=False)
+
+        def on_toggle(e):
+            if e.control.value:
+                dd = make_inline_dd(label, column, key, editable)
+                holder.content = dd
+                holder.visible = True
+                active_filters[key] = dd
+            else:
+                holder.content = None
+                holder.visible = False
+                active_filters.pop(key, None)
+                apply_filters(None)
+            page.update()
+
+        switch = ft.Switch(label=label, value=False, on_change=on_toggle)
+        return ft.Column([switch, holder], spacing=2)
+
+    filter_blocks = [make_filter_block(*spec) for spec in FILTER_SPECS]
 
     def make_item_download(code):
         def item_download(e):
@@ -507,20 +532,17 @@ def main(page: ft.Page):
     filtro_actual_hasta = make_filter_date("Actualización hasta")
 
     def gather_filters():
-        return {
-            "codigo": filtro_codigo.value,
-            "nombre": filtro_nombre.value,
-            "grupo": filtro_grupo.value,
-            "categoria": filtro_categoria.value,
-            "fuente": filtro_fuente.value,
-            "frecuencia": filtro_frecuencia.value,
-            "grupo_publicacion": filtro_grupo_pub.value,
-            "area": filtro_area.value,
-            "creacion_desde": filtro_creacion_desde.controls[0].value,
-            "creacion_hasta": filtro_creacion_hasta.controls[0].value,
-            "actual_desde": filtro_actual_desde.controls[0].value,
-            "actual_hasta": filtro_actual_hasta.controls[0].value,
-        }
+        # Sólo los interruptores activos aportan su valor (carga perezosa)
+        filters = {key: dd.value for key, dd in active_filters.items()}
+        filters.update(
+            {
+                "creacion_desde": filtro_creacion_desde.controls[0].value,
+                "creacion_hasta": filtro_creacion_hasta.controls[0].value,
+                "actual_desde": filtro_actual_desde.controls[0].value,
+                "actual_hasta": filtro_actual_hasta.controls[0].value,
+            }
+        )
+        return filters
 
     # Aplica filtros de los desplegables + búsqueda de texto
     def apply_filters(e):
@@ -676,23 +698,17 @@ def main(page: ft.Page):
     # Construir lista al iniciar
     build_listbox(df_metadata)
 
-    # Filtros: una lista desplegable por campo, en cuadrícula de dos columnas
-    filters_grid = ft.ResponsiveRow(
-        [
-            filtro_codigo,
-            filtro_nombre,
-            filtro_categoria,
-            filtro_grupo,
-            filtro_fuente,
-            filtro_frecuencia,
-            filtro_grupo_pub,
-            filtro_area,
-        ],
-        spacing=8,
-        run_spacing=8,
+    # Filtros: interruptores que revelan su desplegable bajo demanda
+    filters_grid = ft.ResponsiveRow(filter_blocks, spacing=8, run_spacing=6)
+    for block in filters_grid.controls:
+        block.col = {"xs": 12, "sm": 6}
+
+    filters_grid_box = ft.Container(
+        content=ft.Column([filters_grid], scroll=ft.ScrollMode.AUTO, height=190),
+        border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
+        border_radius=8,
+        padding=ft.Padding.symmetric(horizontal=8, vertical=4),
     )
-    for dd in filters_grid.controls:
-        dd.col = {"xs": 12, "sm": 6}
 
     # Layout principal: split vista abierta estilo "open plane"
     # Panel izquierdo: catálogo (60%)
@@ -705,7 +721,7 @@ def main(page: ft.Page):
                     padding=ft.Padding.only(bottom=4),
                 ),
                 ft.Container(
-                    content=filters_grid,
+                    content=filters_grid_box,
                     padding=ft.Padding.only(bottom=4),
                 ),
                 ft.Container(
