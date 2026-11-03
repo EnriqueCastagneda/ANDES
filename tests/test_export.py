@@ -80,5 +80,69 @@ class TestCSVExport(unittest.TestCase):
         self.assertNotIn("Unnamed: 0", df_read.columns)
 
 
+class TestMultiFormatExport(unittest.TestCase):
+    """Tests for the format selector (CSV/JSON/XLS/XML/TXT/HTML)."""
+
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.df = pd.DataFrame({"fecha": ["Ene.2024", "Feb.2024"], "PN00001MM": [1.5, 2.5]})
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def _export(self, fmt):
+        from app import export_series
+        return export_series(self.df, "PN00001MM", "2024-01-01", "2024-03-01", fmt, out_dir=self.temp_dir)
+
+    def test_csv(self):
+        path = self._export("csv")
+        self.assertTrue(path.endswith(".csv"))
+        df = pd.read_csv(path, encoding="utf-8-sig")
+        self.assertEqual(list(df.columns), ["fecha", "PN00001MM"])
+
+    def test_json(self):
+        import json
+        path = self._export("json")
+        self.assertTrue(path.endswith(".json"))
+        with open(path, encoding="utf-8") as f:
+            records = json.load(f)
+        self.assertEqual(records[0]["fecha"], "Ene.2024")
+        self.assertEqual(len(records), 2)
+
+    def test_txt_is_tab_separated(self):
+        path = self._export("txt")
+        self.assertTrue(path.endswith(".txt"))
+        with open(path, encoding="utf-8-sig") as f:
+            first = f.readline().rstrip("\n")
+        self.assertIn("\t", first)
+
+    def test_xml(self):
+        import xml.etree.ElementTree as ET
+        path = self._export("xml")
+        self.assertTrue(path.endswith(".xml"))
+        root = ET.parse(path).getroot()
+        self.assertEqual(root.tag, "serie")
+        self.assertEqual(len(root.findall("periodo")), 2)
+
+    def test_html(self):
+        path = self._export("html")
+        self.assertTrue(path.endswith(".html"))
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        self.assertIn("<!DOCTYPE html>", text)
+        self.assertIn("PN00001MM", text)
+        self.assertIn("<table", text)
+
+    def test_xls_is_native_only(self):
+        from app import export_series
+        with self.assertRaises(ValueError):
+            export_series(self.df, "PN00001MM", "2024-01-01", "2024-03-01", "xls", out_dir=self.temp_dir)
+
+    def test_unknown_format_raises(self):
+        from app import export_series
+        with self.assertRaises(ValueError):
+            export_series(self.df, "PN00001MM", "2024-01-01", "2024-03-01", "pdf", out_dir=self.temp_dir)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
