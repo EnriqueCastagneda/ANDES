@@ -796,17 +796,38 @@ def _sanitize_ld_library_path():
 
 
 def _filter_gdk_cursor_noise():
-    """Suppress the harmless Wayland cursor-theme warning on stderr.
+    """Suppress harmless Flutter/GTK teardown noise on stderr.
 
-    Flutter's GTK backend asks GDK for a cursor with an empty name, so GDK
-    prints ``Gdk-Message: ... Unable to load  from the cursor theme``.  It is
-    noise, not an error, but it looks alarming in a terminal.  Every other
-    line is forwarded unchanged.
+    The prebuilt Flet desktop client prints a few warnings that look alarming
+    but are not errors:
+
+    - ``Gdk-Message: ... Unable to load  from the cursor theme`` — Flutter asks
+      GDK for a cursor with an empty name.
+    - ``embedder.cc ... 'FlutterEngineRemoveView' returned 'kInvalidArguments'
+      ... The implicit view cannot be removed.`` — the engine refuses to remove
+      its implicit view during shutdown.
+    - ``Attempted to set message handler on an FlBinaryMessenger without an
+      engine`` — plugin teardown after the engine is gone.
+    - ``Atk-CRITICAL ... atk_socket_embed: assertion 'plug_id != NULL' failed``
+      — GTK accessibility warning at window creation.
+
+    Every other line is forwarded unchanged.
     """
     if not sys.platform.startswith("linux"):
         return
     if not os.environ.get("WAYLAND_DISPLAY"):
         return
+
+    noise = (
+        b"Unable to load  from the cursor theme",
+        b"'FlutterEngineRemoveView' returned 'kInvalidArguments'",
+        b"The implicit view cannot be removed",
+        b"Attempted to set message handler on an FlBinaryMessenger without an engine",
+        b"atk_socket_embed: assertion 'plug_id != NULL' failed",
+    )
+
+    def is_noise(line):
+        return any(token in line for token in noise)
 
     real_stderr_fd = os.dup(2)
     read_fd, write_fd = os.pipe()
@@ -822,11 +843,13 @@ def _filter_gdk_cursor_noise():
                 pending += chunk
                 while b"\n" in pending:
                     line, pending = pending.split(b"\n", 1)
-                    if b"Unable to load  from the cursor theme" not in line:
+                    if not is_noise(line):
                         os.write(real_stderr_fd, line + b"\n")
-            if pending and b"Unable to load  from the cursor theme" not in pending:
+            if pending and not is_noise(pending):
                 os.write(real_stderr_fd, pending)
 
+    # Daemon thread: never blocks interpreter shutdown; the pipe closes with
+    # the process, so any final client lines are simply dropped.
     threading.Thread(target=pump, daemon=True).start()
 
 
