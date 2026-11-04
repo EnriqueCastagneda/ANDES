@@ -80,6 +80,7 @@ bcrp_flet_app/
 ├── README.md              # Este documento
 ├── LICENSE                # GNU GPL v3
 ├── CONTRIBUTING.md        # Guía de contribución
+├── .github/workflows/     # CI y publicación de releases
 ├── data/                  # Caché de metadatos (generado, no versionado)
 ├── outputs/               # Archivos descargados (generado, no versionado)
 └── tests/                 # Pruebas con pytest
@@ -93,6 +94,28 @@ python -m pytest -q
 
 Las pruebas de red se omiten automáticamente cuando la CDN del BCRP devuelve una
 página de bloqueo temporal.
+
+## Integración continua (GitHub Actions)
+
+El repositorio incluye dos flujos en `.github/workflows/`:
+
+- **CI** (`.github/workflows/ci.yml`): se ejecuta en cada `push` a `main`/`master`,
+  en cada *pull request* y manualmente. Instala dependencias, compila `app.py` y
+  ejecuta `pytest` en Python 3.10 y 3.12.
+- **Release** (`.github/workflows/release.yml`): se ejecuta al empujar un tag
+  `v*`. Repite las pruebas, genera un ZIP del código fuente y publica un
+  *GitHub Release* con notas automáticas.
+
+### Publicar una versión
+
+```bash
+git tag -a v1.0.1 -m "BCRP Data Extractor v1.0.1"
+git push origin v1.0.1
+```
+
+El flujo de *Release* creará la versión y adjuntará
+`bcrp-data-extractor-v1.0.1.zip`.
+
 
 ## Datos y API
 
