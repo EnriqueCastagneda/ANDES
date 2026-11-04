@@ -100,14 +100,20 @@ jobs:
     environment: pypi
     permissions:
       id-token: write
+    env:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
     steps:
       - name: Download dist
         uses: actions/download-artifact@v8
         with:
           name: python-dist
           path: dist
-      - name: Publish (Trusted Publishing)
+      - name: Publish
+        if: env.PYPI_API_TOKEN != ''
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ env.PYPI_API_TOKEN }}
+          skip-existing: true
 
   release:
     name: Publish GitHub release
