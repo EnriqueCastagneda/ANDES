@@ -356,147 +356,56 @@ def main(page: ft.Page):
         auto_scroll=False,
     )
 
-    # Filtros por etiqueta: el control se crea sólo al activarse.
-    active_filters = {}
+    # Selector de frecuencia mutuamente excluyente (pills)
+    FREQ_OPTIONS = ["Todos", "Diaria", "Mensual", "Trimestral", "Anual"]
+    freq_state = {"value": "Todos"}
+    freq_pills = []
 
-    def make_inline_dd(label, column, key):
-        values = sorted(df_metadata[column].dropna().astype(str).unique())
-        return ft.Dropdown(
-            label=label,
-            value="",
-            dense=True,
-            enable_filter=True,
-            options=[ft.dropdown.Option(key="", text="Todos")]
-            + [ft.dropdown.Option(key=v, text=v) for v in values],
-            on_select=lambda e: apply_filters(None),
-        )
+    def make_frequency_selector():
+        row = ft.Row(spacing=8, wrap=False)
+        for option in FREQ_OPTIONS:
+            text = ft.Text(option, size=12, color=MUTED, weight=ft.FontWeight.W_500)
+            pill = ft.Container(
+                content=text,
+                height=34,
+                padding=ft.Padding.symmetric(horizontal=14, vertical=0),
+                alignment=ft.Alignment.CENTER,
+                border_radius=17,
+                bgcolor=SURFACE_2,
+                border=ft.Border.all(1, BORDER),
+                ink=True,
+                animate=ft.Animation(140, ft.AnimationCurve.EASE_OUT),
+            )
+            freq_pills.append((option, pill, text))
 
-    def make_inline_search(label, column, key):
-        """Barra de búsqueda desplegable sin cargar el índice completo.
+            def make_click(value):
+                def on_click(e):
+                    freq_state["value"] = value
+                    for opt, p, t in freq_pills:
+                        active = opt == value
+                        p.bgcolor = ACCENT if active else SURFACE_2
+                        p.border = ft.Border.all(1, ACCENT if active else BORDER)
+                        t.color = "#ffffff" if active else MUTED
+                        t.weight = ft.FontWeight.W_600 if active else ft.FontWeight.W_500
+                    apply_filters(None)
+                return on_click
 
-        Las sugerencias se calculan sólo al escribir y se limitan a 25, así
-        no se envía al cliente una lista de miles de opciones.
-        """
-        def apply_pick(value):
-            async def pick(e):
-                sb.value = value
-                sb.controls = []
-                try:
-                    await sb.close_view()
-                except Exception:
-                    pass
-                apply_filters(None)
-            return pick
+            pill.on_click = make_click(option)
+            row.controls.append(pill)
+        return row
 
-        def on_change(e):
-            q = (sb.value or "").strip().lower()
-            if len(q) < 2:
-                sb.controls = []
-                page.update()
-                return
-            vals = df_metadata[column].dropna().astype(str)
-            matches = vals[vals.str.lower().str.contains(q, regex=False)].unique()[:25]
-            sb.controls = [
-                ft.ListTile(title=ft.Text(m, size=13), dense=True, on_click=apply_pick(m))
-                for m in matches
-            ]
-            page.update()
+    frequency_selector = make_frequency_selector()
 
-        sb = ft.SearchBar(
-            bar_hint_text=f"Buscar {label.lower()}...",
-            bar_leading=ft.Icon(ft.Icons.SEARCH),
-            controls=[],
-            on_change=on_change,
-            on_submit=lambda e: apply_filters(None),
-        )
-        return sb
+    def set_frequency(value):
+        freq_state["value"] = value
+        for opt, p, t in freq_pills:
+            active = opt == value
+            p.bgcolor = ACCENT if active else SURFACE_2
+            p.border = ft.Border.all(1, ACCENT if active else BORDER)
+            t.color = "#ffffff" if active else MUTED
+            t.weight = ft.FontWeight.W_600 if active else ft.FontWeight.W_500
 
-    FILTER_SPECS = [
-        # Identificación (búsqueda, sin índice)
-        ("codigo", "Código de serie", "Código de serie", "search"),
-        ("nombre", "Nombre de serie", "Nombre de serie", "search"),
-        # Clasificación (listas desplegables)
-        ("categoria", "Categoría de serie", "Categoría de serie", "dropdown"),
-        ("grupo", "Grupo de serie", "Grupo de serie", "dropdown"),
-        ("fuente", "Fuente", "Fuente", "dropdown"),
-        ("frecuencia", "Frecuencia", "Frecuencia", "dropdown"),
-        ("grupo_publicacion", "Grupo de publicación", "Grupo de publicación", "dropdown"),
-        ("area", "Área que publica", "Área que publica", "dropdown"),
-    ]
-
-    def make_filter_block(key, label, column, kind):
-        holder = ft.Container(
-            visible=False,
-            padding=ft.Padding.only(top=10, bottom=6, left=2, right=2),
-        )
-        label_text = ft.Text(
-            label,
-            size=11,
-            color=MUTED,
-            weight=ft.FontWeight.W_500,
-        )
-        chip = ft.Container(
-            content=label_text,
-            padding=ft.Padding.symmetric(horizontal=10, vertical=6),
-            border_radius=20,
-            bgcolor=SURFACE_2,
-            border=ft.Border.all(1, BORDER),
-            ink=True,
-            animate=ft.Animation(140, ft.AnimationCurve.EASE_OUT),
-        )
-
-        def set_selected(selected):
-            if selected:
-                label_text.color = "#ffffff"
-                label_text.weight = ft.FontWeight.W_600
-                chip.bgcolor = ACCENT
-                chip.border = ft.Border.all(1, ACCENT)
-            else:
-                label_text.color = MUTED
-                label_text.weight = ft.FontWeight.W_500
-                chip.bgcolor = SURFACE_2
-                chip.border = ft.Border.all(1, BORDER)
-
-        def on_hover(e):
-            if key not in active_filters:
-                chip.bgcolor = SURFACE_3 if e.data == "true" else SURFACE_2
-                page.update()
-
-        chip.on_hover = on_hover
-
-        async def on_label_click(e):
-            if key in active_filters:
-                # desactivar: quitar filtro y ocultar el control
-                holder.content = None
-                holder.visible = False
-                active_filters.pop(key, None)
-                set_selected(False)
-                apply_filters(None)
-            else:
-                # activar: crear el control sólo ahora
-                if kind == "search":
-                    control = make_inline_search(label, column, key)
-                    holder.content = control
-                    holder.visible = True
-                    active_filters[key] = control
-                    set_selected(True)
-                    page.update()
-                    try:
-                        await control.open_view()
-                    except Exception:
-                        pass
-                    return
-                control = make_inline_dd(label, column, key)
-                holder.content = control
-                holder.visible = True
-                active_filters[key] = control
-                set_selected(True)
-            page.update()
-
-        chip.on_click = on_label_click
-        return ft.Column([chip, holder], spacing=0)
-
-    filter_blocks = [make_filter_block(*spec) for spec in FILTER_SPECS]
+    set_frequency("Todos")
 
     def make_item_download(code):
         def item_download(e):
@@ -825,8 +734,7 @@ def main(page: ft.Page):
     filtro_actual_hasta = make_filter_date("Actualización hasta")
 
     def gather_filters():
-        # Sólo los interruptores activos aportan su valor (carga perezosa)
-        filters = {key: dd.value for key, dd in active_filters.items()}
+        filters = {"frecuencia": freq_state["value"]}
         filters.update(
             {
                 "creacion_desde": filtro_creacion_desde.controls[0].value,
@@ -1015,13 +923,8 @@ def main(page: ft.Page):
     # Construir lista al iniciar
     build_listbox(df_metadata)
 
-    # Filtros: 2 filas de 4 etiquetas; al desplegar, la fila baja crece
-    filters_grid = ft.ResponsiveRow(filter_blocks, spacing=10, run_spacing=16)
-    for block in filters_grid.controls:
-        block.col = {"xs": 6, "sm": 3}
-
-    filters_grid_box = ft.Container(
-        content=filters_grid,
+    frequency_box = ft.Container(
+        content=frequency_selector,
         padding=ft.Padding.symmetric(horizontal=2, vertical=2),
     )
 
@@ -1039,7 +942,7 @@ def main(page: ft.Page):
                 ),
                 ft.Text("Explora y filtra el catálogo del BCRP", size=12, color=MUTED),
                 search_box,
-                filters_grid_box,
+                frequency_box,
                 filter_btn,
                 ft.Text("Resultados", size=12, color=MUTED),
                 ft.Container(content=series_list_view, expand=True),
