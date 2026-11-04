@@ -1,5 +1,5 @@
 """
-Test suite for BCRP Flet App - Phase 2: API connection and data extraction
+Test suite for BCRP Downloader - Phase 2: API connection and data extraction
 """
 import os
 import sys

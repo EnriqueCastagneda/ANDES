@@ -35,8 +35,8 @@ jobs:
       - name: Create source archive
         run: |
           mkdir -p dist
-          git archive --format=zip --prefix=bcrp-data-extractor/ \
-            -o "dist/bcrp-data-extractor-${GITHUB_REF_NAME}.zip" HEAD
+          git archive --format=zip --prefix=bcrp-downloader/ \
+            -o "dist/bcrp-downloader-${GITHUB_REF_NAME}.zip" HEAD
 
       - name: Publish GitHub release
         env:
@@ -44,4 +44,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" dist/*.zip \
             --generate-notes \
-            --title "BCRP Data Extractor $GITHUB_REF_NAME"
+            --title "BCRP Downloader $GITHUB_REF_NAME"

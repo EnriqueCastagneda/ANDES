@@ -1,6 +1,6 @@
 # Guía de contribución
 
-Gracias por querer mejorar BCRP Data Extractor.
+Gracias por querer mejorar BCRP Downloader.
 
 ## Flujo de trabajo
 

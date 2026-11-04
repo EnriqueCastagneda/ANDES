@@ -1,5 +1,5 @@
 """
-Test suite for BCRP Flet App - advanced metadata filtering.
+Test suite for BCRP Downloader - advanced metadata filtering.
 """
 import os
 import sys

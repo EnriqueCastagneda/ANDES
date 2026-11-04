@@ -1,5 +1,5 @@
 """
-Test suite for BCRP Flet App - Phase 4: HTTP retry and block detection
+Test suite for BCRP Downloader - Phase 4: HTTP retry and block detection
 """
 import os
 import sys

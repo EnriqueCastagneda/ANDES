@@ -1,5 +1,5 @@
 """
-Test suite for BCRP Flet App - Phase 1: Metadata loading
+Test suite for BCRP Downloader - Phase 1: Metadata loading
 """
 import os
 import sys

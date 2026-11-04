@@ -1,4 +1,4 @@
-# BCRP Data Extractor
+# BCRP Downloader
 
 Aplicación de escritorio minimalista, escrita en Python con [Flet](https://flet.dev/),
 para explorar el catálogo de series estadísticas del **Banco Central de Reserva del
@@ -10,7 +10,7 @@ Perú (BCRP)** y descargar sus series temporales.
 
 ## Descripción
 
-BCRP Data Extractor descarga el catálogo oficial de metadatos (`17.000+` series),
+BCRP Downloader descarga el catálogo oficial de metadatos (`17.000+` series),
 lo indexa localmente con Pandas y permite buscar, filtrar y visualizar cada serie.
 Desde la propia interfaz se consulta la API pública del BCRP y se exporta la serie
 en el formato elegido.
@@ -40,7 +40,7 @@ en el formato elegido.
 
 ```bash
 git clone <URL-del-repositorio>
-cd bcrp_flet_app
+cd bcrp-downloader
 
 python3 -m venv .venv
 source .venv/bin/activate        # En Windows: .venv\Scripts\activate
@@ -74,7 +74,7 @@ python -c "import flet as ft, app; ft.run(app.main, port=8550, view=ft.AppView.W
 ## Estructura del proyecto
 
 ```text
-bcrp_flet_app/
+bcrp-downloader/
 ├── app.py                 # Aplicación monolítica (UI + lógica)
 ├── requirements.txt       # Dependencias
 ├── README.md              # Este documento
@@ -109,12 +109,12 @@ El repositorio incluye dos flujos en `.github/workflows/`:
 ### Publicar una versión
 
 ```bash
-git tag -a v1.0.1 -m "BCRP Data Extractor v1.0.1"
+git tag -a v1.0.1 -m "BCRP Downloader v1.0.1"
 git push origin v1.0.1
 ```
 
 El flujo de *Release* creará la versión y adjuntará
-`bcrp-data-extractor-v1.0.1.zip`.
+`bcrp-downloader-v1.0.1.zip`.
 
 
 ## Datos y API
@@ -131,7 +131,7 @@ Este proyecto se distribuye bajo la **GNU General Public License v3.0**. Consult
 el archivo [LICENSE](LICENSE) para el texto completo.
 
 ```
-Copyright (C) 2026 BCRP Data Extractor contributors
+Copyright (C) 2026 BCRP Downloader contributors
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software

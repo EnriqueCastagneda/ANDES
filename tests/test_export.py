@@ -1,5 +1,5 @@
 """
-Test suite for BCRP Flet App - Phase 3: CSV export
+Test suite for BCRP Downloader - Phase 3: CSV export
 """
 import os
 import sys

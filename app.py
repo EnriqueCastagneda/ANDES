@@ -1,5 +1,5 @@
-# BCRP Data Extractor
-# Copyright (C) 2026 BCRP Data Extractor contributors
+# BCRP Downloader
+# Copyright (C) 2026 BCRP Downloader contributors
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ DATA_DIR = "data"
 OUTPUT_DIR = "outputs"
 METADATA_PATH = os.path.join(DATA_DIR, "metadata_bcrp.csv")
 
-APP_NAME = "BCRP Data Extractor"
+APP_NAME = "BCRP Downloader"
 APP_VERSION = "1.0.0"
 
 KNOWN_CODE_COL = "Código de serie"
@@ -317,7 +317,7 @@ def main(page: ft.Page):
     MUTED = "#a1a1aa"
     RADIUS = 16
 
-    page.title = "BCRP Data Extractor"
+    page.title = APP_NAME
     page.theme_mode = ft.ThemeMode.DARK
     page.bgcolor = BG
     page.window.width = 1180
