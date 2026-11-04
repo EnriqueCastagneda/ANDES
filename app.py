@@ -735,6 +735,7 @@ def main(page: ft.Page):
         spacing=6,
         scroll=ft.ScrollMode.AUTO,
         expand=True,
+        horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
     )
 
     # --- Filtros avanzados: sólo fechas ---
@@ -1051,6 +1052,7 @@ def main(page: ft.Page):
             ],
             spacing=12,
             expand=True,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         ),
         expand=2,
         padding=18,
