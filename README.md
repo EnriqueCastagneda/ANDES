@@ -28,6 +28,20 @@ de IA.
 - Python 3.10 o superior
 - Conexión a Internet para la primera descarga de metadatos y para descargar series
 
+## Ejecutables compilados
+
+Descarga los archivos de la versión [v1.1.0](https://github.com/EnriqueCastagneda/BCRP-Downloader/releases/tag/v1.1.0):
+
+| Plataforma | Descarga |
+| --- | --- |
+| Linux | [bcrp-downloader-linux-1.1.0.tar.gz](https://github.com/EnriqueCastagneda/BCRP-Downloader/releases/download/v1.1.0/bcrp-downloader-linux-1.1.0.tar.gz) |
+| Windows | [bcrp-downloader-windows-1.1.0.zip](https://github.com/EnriqueCastagneda/BCRP-Downloader/releases/download/v1.1.0/bcrp-downloader-windows-1.1.0.zip) |
+| macOS | [bcrp-downloader-macos-1.1.0.zip](https://github.com/EnriqueCastagneda/BCRP-Downloader/releases/download/v1.1.0/bcrp-downloader-macos-1.1.0.zip) |
+| Android (APK) | [bcrp-downloader-apk-1.1.0.zip](https://github.com/EnriqueCastagneda/BCRP-Downloader/releases/download/v1.1.0/bcrp-downloader-apk-1.1.0.zip) |
+| Web | [bcrp-downloader-web-1.1.0.zip](https://github.com/EnriqueCastagneda/BCRP-Downloader/releases/download/v1.1.0/bcrp-downloader-web-1.1.0.zip) |
+
+Consulta la página de [releases](https://github.com/EnriqueCastagneda/BCRP-Downloader/releases) para descargar otras versiones.
+
 ## Instalación
 
 Para usuarios (entorno aislado, recomienda [pipx](https://pipx.pypa.io/)):
