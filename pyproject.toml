@@ -1,0 +1,26 @@
+[project]
+name = "bcrp-downloader"
+version = "1.0.0"
+description = "Explorador y extractor de series estadísticas del Banco Central de Reserva del Perú (BCRP)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "BCRP Downloader contributors" }]
+keywords = ["bcrp", "flet", "pandas", "series-temporales", "peru"]
+dependencies = [
+    "flet==1.0.5",
+    "pandas>=2.2",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.flet]
+app.module = "app"
+product = "BCRP Downloader"
+artifact = "bcrp-downloader"
+org = "com.bcrpdownloader"
+company = "BCRP Downloader contributors"
+copyright = "Copyright (C) 2026 BCRP Downloader contributors"
+build_number = 1

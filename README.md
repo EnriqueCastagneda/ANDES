@@ -80,6 +80,7 @@ bcrp-downloader/
 ├── README.md              # Este documento
 ├── LICENSE                # GNU GPL v3
 ├── CONTRIBUTING.md        # Guía de contribución
+├── pyproject.toml         # Metadatos y configuración de build (Flet)
 ├── .github/workflows/     # CI y publicación de releases
 ├── data/                  # Caché de metadatos (generado, no versionado)
 ├── outputs/               # Archivos descargados (generado, no versionado)
@@ -102,19 +103,43 @@ El repositorio incluye dos flujos en `.github/workflows/`:
 - **CI** (`.github/workflows/ci.yml`): se ejecuta en cada `push` a `main`/`master`,
   en cada *pull request* y manualmente. Instala dependencias, compila `app.py` y
   ejecuta `pytest` en Python 3.10 y 3.12.
-- **Release** (`.github/workflows/release.yml`): se ejecuta al empujar un tag
-  `v*`. Repite las pruebas, genera un ZIP del código fuente y publica un
-  *GitHub Release* con notas automáticas.
+- **Build** (`.github/workflows/build.yml`): usa
+  [`flet-dev/flet-build-action`](https://github.com/flet-dev/flet-build-action)
+  para compilar la aplicación en los cinco destinos configurados y publicar los
+  artefactos.
+
+### Configuración del build
+
+| Pregunta | Respuesta en este repositorio |
+| --- | --- |
+| Archivo principal | `app.py` en la raíz (estructura propia, declarada con `[tool.flet.app] module = "app"`) |
+| Gestor de dependencias | `pip` + `requirements.txt` para desarrollo; `pyproject.toml` para el build |
+| Plataformas | Linux, Windows, macOS, Android (APK) y Web. iOS no está incluido |
+| Publicación | Automática al crear un tag `v*` y manual desde *workflow_dispatch* (`publish_release`) |
+
+La matriz de `.github/workflows/build.yml` compila:
+
+| Destino | Runner | Artefacto |
+| --- | --- | --- |
+| `linux` | `ubuntu-latest` | tar.gz |
+| `windows` | `windows-latest` | zip |
+| `macos` | `macos-latest` | zip |
+| `apk` | `ubuntu-latest` | APK de Android |
+| `web` | `ubuntu-latest` | zip |
 
 ### Publicar una versión
+
+Automático, al empujar un tag:
 
 ```bash
 git tag -a v1.0.1 -m "BCRP Downloader v1.0.1"
 git push origin v1.0.1
 ```
 
-El flujo de *Release* creará la versión y adjuntará
-`bcrp-downloader-v1.0.1.zip`.
+Manual, desde *Actions → Build → Run workflow*, activando `publish_release` e
+indicando `release_tag` (por ejemplo `v1.0.1`). Si solo se quieren los artefactos,
+deja `publish_release` desactivado y descárgalos desde la ejecución.
+
 
 
 ## Datos y API

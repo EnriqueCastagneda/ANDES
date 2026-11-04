@@ -1,0 +1,129 @@
+name: Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Publicar un GitHub Release con los artefactos generados"
+        type: boolean
+        default: false
+      release_tag:
+        description: "Tag del release (ej. v1.0.0). Obligatorio si publish_release=true"
+        type: string
+        required: false
+        default: ""
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux
+            os: ubuntu-latest
+          - target: windows
+            os: windows-latest
+          - target: macos
+            os: macos-latest
+          - target: apk
+            os: ubuntu-latest
+          - target: web
+            os: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="1.0.0"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build with Flet
+        id: build
+        uses: flet-dev/flet-build-action@v1
+        with:
+          target: ${{ matrix.target }}
+          working-directory: .
+          runner-python-version: "3.12"
+          build-number: ${{ github.run_number }}
+          build-version: ${{ steps.version.outputs.version }}
+          archive-output: true
+
+      - name: Stage artifact
+        shell: bash
+        run: |
+          mkdir -p artifact
+          if [[ "${{ matrix.target }}" == "linux" ]]; then EXT=".tar.gz"; else EXT=".zip"; fi
+          cp "${{ steps.build.outputs.archive-path }}" \
+             "artifact/bcrp-downloader-${{ matrix.target }}-${{ steps.version.outputs.version }}${EXT}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bcrp-downloader-${{ matrix.target }}
+          path: artifact/*
+          if-no-files-found: error
+          archive: false
+          retention-days: 14
+
+  release:
+    name: Publish release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.publish_release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Resolve release tag
+        id: tag
+        shell: bash
+        run: |
+          TAG="${{ inputs.release_tag }}"
+          if [[ -z "$TAG" ]]; then
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          if [[ -z "$TAG" ]]; then
+            echo "::error::No release tag. Provide release_tag or push a v* tag."
+            exit 1
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            gh release create "${{ steps.tag.outputs.tag }}" artifacts/* \
+              --generate-notes \
+              --title "BCRP Downloader ${{ steps.tag.outputs.tag }}"
+          else
+            gh release create "${{ steps.tag.outputs.tag }}" artifacts/* \
+              --generate-notes \
+              --title "BCRP Downloader ${{ steps.tag.outputs.tag }}" \
+              --target "$GITHUB_SHA"
+          fi
