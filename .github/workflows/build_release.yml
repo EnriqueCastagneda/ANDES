@@ -114,6 +114,7 @@ jobs:
         with:
           password: ${{ env.PYPI_API_TOKEN }}
           skip-existing: true
+          attestations: false
 
   release:
     name: Publish GitHub release
