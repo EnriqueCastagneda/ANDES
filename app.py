@@ -117,6 +117,7 @@ def _http_get_bytes(url, max_retries=3, timeout=30):
 
 def download_metadata():
     """Descarga el catálogo oficial de metadatos si no existe localmente."""
+    os.makedirs(DATA_DIR, exist_ok=True)
     if not os.path.exists(METADATA_PATH):
         try:
             res = requests.get(METADATA_URL, headers=HEADERS, timeout=60)
