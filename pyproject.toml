@@ -9,13 +9,15 @@ authors = [{ name = "BCRP Downloader contributors" }]
 keywords = ["bcrp", "flet", "pandas", "series-temporales", "peru"]
 dependencies = [
     "flet==1.0.5",
-    "flet-cli==1.0.5",
     "pandas>=2.2",
     "requests>=2.31",
 ]
 
-[project.optional-dependencies]
-dev = ["pytest>=8.0"]
+[dependency-groups]
+dev = [
+    "flet-cli==1.0.5",
+    "pytest>=8.0",
+]
 
 [tool.flet]
 app.module = "app"
