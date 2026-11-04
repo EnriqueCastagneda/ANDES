@@ -1,0 +1,1001 @@
+"""Flet user interface for BCRP Downloader."""
+
+from __future__ import annotations
+
+import os
+import re
+from datetime import datetime
+
+import flet as ft
+import pandas as pd
+
+from .. import APP_NAME, APP_VERSION
+from ..core.api import (
+    EXPORT_FORMATS,
+    export_series,
+    export_table,
+    find_pdf_url,
+    periods_to_dataframe,
+)
+from ..core.http import _http_get_bytes, _http_get_json
+from ..core.metadata import (
+    KNOWN_CODE_COL,
+    KNOWN_NAME_COL,
+    filter_metadata,
+    load_metadata,
+)
+from ..core.paths import DATA_DIR, OUTPUT_DIR
+from .theme import ThemeController
+
+
+def main(page: ft.Page):
+    # --- Design tokens: dark SaaS / Bento ---
+    BG = "#0b0b0d"
+    SURFACE = "#18181b"
+    SURFACE_2 = "#27272a"
+    SURFACE_3 = "#323238"
+    BORDER = ft.Colors.with_opacity(0.10, ft.Colors.WHITE)
+    ACCENT = "#3b82f6"
+    ACCENT_SOFT = "#3b82f626"
+    ACCENT_BORDER = "#3b82f666"
+    TEXT = "#fafafa"
+    MUTED = "#a1a1aa"
+    RADIUS = 16
+
+    page.title = APP_NAME
+    page.bgcolor = BG
+    page.window.width = 1180
+    page.window.height = 760
+    page.window.min_width = 980
+    page.window.min_height = 640
+    page.padding = 20
+    page.vertical_alignment = ft.MainAxisAlignment.START
+
+    theme_controller = ThemeController(page)
+    theme_controller.start()
+
+    os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+    def notify(message, color="red"):
+        page.show_dialog(ft.SnackBar(ft.Text(message), bgcolor=color))
+
+    df_metadata = pd.DataFrame()
+    try:
+        df_metadata = load_metadata()
+    except Exception as e:
+        notify(f"Error al cargar metadatos: {e}")
+        return
+
+    # Servicio para abrir enlaces externos (documentación PDF)
+    url_launcher = ft.UrlLauncher()
+    try:
+        page.services.append(url_launcher)
+    except Exception:
+        pass
+
+    # Estado reactivo
+    selected_code = ft.Text(value="", visible=False)
+
+    # --- Panel Izquierdo: Catálogo ---
+    # Buscador flotante con icono y foco acentuado
+    search_box = ft.TextField(
+        hint_text="Buscar serie, código o categoría…",
+        prefix_icon=ft.Icons.SEARCH,
+        text_size=14,
+        filled=True,
+        fill_color=SURFACE_2,
+        content_padding=ft.Padding.symmetric(horizontal=14, vertical=12),
+        hint_style=ft.TextStyle(size=14, color=MUTED),
+        border={
+            ft.ControlState.DEFAULT: ft.OutlineInputBorder(
+                border_radius=14, side=ft.BorderSide(1, BORDER)
+            ),
+            ft.ControlState.FOCUSED: ft.OutlineInputBorder(
+                border_radius=14, side=ft.BorderSide(1, ACCENT)
+            ),
+        },
+    )
+
+    series_list_view = ft.ListView(
+        expand=1,
+        spacing=4,
+        padding=ft.Padding.only(top=8, bottom=8),
+        auto_scroll=False,
+    )
+
+    # Selector de frecuencia mutuamente excluyente (pills)
+    FREQ_OPTIONS = ["Todos", "Diaria", "Mensual", "Trimestral", "Anual"]
+    freq_state = {"value": "Todos"}
+    freq_pills = []
+
+    def make_frequency_selector():
+        row = ft.Row(spacing=8, wrap=False)
+        for option in FREQ_OPTIONS:
+            text = ft.Text(option, size=12, color=MUTED, weight=ft.FontWeight.W_500)
+            pill = ft.Container(
+                content=text,
+                height=34,
+                padding=ft.Padding.symmetric(horizontal=14, vertical=0),
+                alignment=ft.Alignment.CENTER,
+                border_radius=17,
+                bgcolor=SURFACE_2,
+                border=ft.Border.all(1, BORDER),
+                ink=True,
+                animate=ft.Animation(140, ft.AnimationCurve.EASE_OUT),
+            )
+            freq_pills.append((option, pill, text))
+
+            def make_click(value):
+                def on_click(e):
+                    freq_state["value"] = value
+                    for opt, p, t in freq_pills:
+                        active = opt == value
+                        p.bgcolor = ACCENT if active else SURFACE_2
+                        p.border = ft.Border.all(1, ACCENT if active else BORDER)
+                        t.color = "#ffffff" if active else MUTED
+                        t.weight = ft.FontWeight.W_600 if active else ft.FontWeight.W_500
+                    apply_filters(None)
+                return on_click
+
+            pill.on_click = make_click(option)
+            row.controls.append(pill)
+        return row
+
+    frequency_selector = make_frequency_selector()
+
+    def set_frequency(value):
+        freq_state["value"] = value
+        for opt, p, t in freq_pills:
+            active = opt == value
+            p.bgcolor = ACCENT if active else SURFACE_2
+            p.border = ft.Border.all(1, ACCENT if active else BORDER)
+            t.color = "#ffffff" if active else MUTED
+            t.weight = ft.FontWeight.W_600 if active else ft.FontWeight.W_500
+
+    set_frequency("Todos")
+
+    def make_item_download(code):
+        def item_download(e):
+            do_download(code)
+        return item_download
+
+    # Estado de selección múltiple y foco de teclado
+    selected_codes = set()
+    focused = {"index": -1}
+    visible_cards = []
+
+    def toggle_selection(entry):
+        code = entry["code"]
+        if code in selected_codes:
+            selected_codes.discard(code)
+        else:
+            selected_codes.add(code)
+
+    def restyle_cards():
+        for entry in visible_cards:
+            card = entry["card"]
+            if entry["code"] in selected_codes:
+                card.bgcolor = SURFACE_3
+                card.border = ft.Border.all(1, ACCENT)
+                entry["indicator"].bgcolor = ACCENT
+                entry["indicator"].border = ft.Border.all(1, ACCENT)
+                entry["icon"].visible = True
+            else:
+                card.bgcolor = SURFACE_2
+                if entry["index"] == focused["index"]:
+                    card.border = ft.Border.all(1, "#60a5fa")
+                else:
+                    card.border = ft.Border.all(1, BORDER)
+                entry["indicator"].bgcolor = "transparent"
+                entry["indicator"].border = ft.Border.all(1, BORDER)
+                entry["icon"].visible = False
+
+    def build_listbox(df: pd.DataFrame):
+        series_list_view.controls.clear()
+        visible_cards.clear()
+        if df.empty:
+            focused["index"] = -1
+            series_list_view.controls.append(
+                ft.Container(
+                    content=ft.Text("No se encontraron resultados", size=13, color=MUTED),
+                    padding=ft.Padding.symmetric(vertical=24, horizontal=12),
+                    alignment=ft.Alignment.CENTER,
+                )
+            )
+            page.update()
+            return
+
+        # Mostrar filas - limitado a 300 para rendimiento
+        rows_to_show = df.head(300)
+
+        for idx, (_, row) in enumerate(rows_to_show.iterrows()):
+            code_raw = str(row[KNOWN_CODE_COL])
+            code_val = code_raw.upper()
+            name_val = str(row[KNOWN_NAME_COL]).upper()
+            # Bind row values now so each handler keeps its own series
+            row_values = {
+                "Código": code_val,
+                "Nombre": name_val,
+                "Categoría": str(row["Categoría de serie"]).upper(),
+                "Grupo": str(row["Grupo de serie"]).upper(),
+                "Frecuencia": str(row["Frecuencia"]).upper(),
+                "Fuente": str(row["Fuente"]).upper(),
+                "Área publica": str(row["Área que publica"]).upper(),
+                "Inicio": str(row["Fecha de inicio"]),
+                "Fin": str(row["Fecha de fin"]),
+                "Unidad": str(row["Unidad de medida"]),
+                "Descripción": "" if str(row["Descripción de la serie"]).lower() in ("nan", "none", "") else str(row["Descripción de la serie"]),
+            }
+
+            check_icon = ft.Icon(ft.Icons.CHECK, size=13, color="#ffffff", visible=False)
+            indicator = ft.Container(
+                content=check_icon,
+                width=18,
+                height=18,
+                border_radius=5,
+                border=ft.Border.all(1, BORDER),
+                bgcolor="transparent",
+                alignment=ft.Alignment.CENTER,
+            )
+
+            card = ft.Container(
+                content=ft.Row(
+                    [
+                        indicator,
+                        ft.Container(
+                            content=ft.Text(
+                                code_val,
+                                size=11,
+                                weight=ft.FontWeight.W_600,
+                                color="#bfdbfe",
+                            ),
+                            bgcolor=ACCENT_SOFT,
+                            border=ft.Border.all(1, ACCENT_BORDER),
+                            border_radius=8,
+                            padding=ft.Padding.symmetric(horizontal=8, vertical=3),
+                        ),
+                        ft.Container(
+                            content=ft.Text(name_val, size=13, color=TEXT),
+                            expand=True,
+                        ),
+                        ft.IconButton(
+                            icon=ft.Icons.DOWNLOAD,
+                            icon_size=18,
+                            icon_color=MUTED,
+                            tooltip="Descargar esta serie",
+                            on_click=make_item_download(code_raw),
+                        ),
+                    ],
+                    spacing=10,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                padding=ft.Padding.symmetric(horizontal=12, vertical=10),
+                bgcolor=SURFACE_2,
+                border=ft.Border.all(1, BORDER),
+                border_radius=12,
+                ink=True,
+                animate=ft.Animation(140, ft.AnimationCurve.EASE_OUT),
+            )
+
+            entry = {
+                "code": code_raw,
+                "values": row_values,
+                "card": card,
+                "indicator": indicator,
+                "icon": check_icon,
+                "index": idx,
+            }
+
+            def make_click(entry_ref):
+                def on_click(e):
+                    focused["index"] = entry_ref["index"]
+                    toggle_selection(entry_ref)
+                    selected_code.value = entry_ref["code"]
+                    show_details(entry_ref["values"])
+                    restyle_cards()
+                    page.update()
+                return on_click
+
+            def make_hover(entry_ref):
+                def on_hover(e):
+                    if entry_ref["code"] in selected_codes:
+                        return
+                    entry_ref["card"].bgcolor = SURFACE_3 if e.data == "true" else SURFACE_2
+                    page.update()
+                return on_hover
+
+            card.on_hover = make_hover(entry)
+            card.on_click = make_click(entry)
+            visible_cards.append(entry)
+            series_list_view.controls.append(card)
+
+        if focused["index"] < 0 or focused["index"] >= len(visible_cards):
+            focused["index"] = 0
+        restyle_cards()
+        page.update()
+
+    # Construir lista al iniciar (tras declarar info_details)
+    # --- Panel Derecho: Parámetros y Metadatos ---
+    # Selector de fecha con calendario (tipo datetime)
+    def make_date_control(hint):
+        field = ft.TextField(
+            hint_text=hint,
+            read_only=True,
+            text_size=13,
+            width=130,
+            filled=True,
+            fill_color=SURFACE_2,
+            content_padding=ft.Padding.symmetric(horizontal=12, vertical=11),
+            hint_style=ft.TextStyle(size=13, color=MUTED),
+            border={
+                ft.ControlState.DEFAULT: ft.OutlineInputBorder(
+                    border_radius=12, side=ft.BorderSide(1, BORDER)
+                ),
+                ft.ControlState.FOCUSED: ft.OutlineInputBorder(
+                    border_radius=12, side=ft.BorderSide(1, ACCENT)
+                ),
+            },
+        )
+        picker = ft.DatePicker(
+            first_date=datetime(1990, 1, 1),
+            last_date=datetime(2035, 12, 31),
+        )
+
+        def on_pick(e):
+            if picker.value:
+                field.value = picker.value.strftime("%Y-%m-%d")
+                page.update()
+
+        picker.on_change = on_pick
+
+        def open_picker(e):
+            page.show_dialog(picker)
+
+        button = ft.IconButton(
+            icon=ft.Icons.CALENDAR_MONTH,
+            icon_size=18,
+            icon_color=MUTED,
+            tooltip="Elegir fecha",
+            on_click=open_picker,
+        )
+        return ft.Row(
+            [field, button],
+            spacing=2,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+
+    start_control = make_date_control("Fecha inicio")
+    end_control = make_date_control("Fecha fin")
+
+    # Referencias a los campos de texto internos para leer el valor
+    start_input = start_control.controls[0]
+    end_input = end_control.controls[0]
+
+    # Selector de formato de descarga
+    format_dd = ft.Dropdown(
+        label="Formato",
+        value="CSV",
+        width=140,
+        dense=True,
+        filled=True,
+        fill_color=SURFACE_2,
+        options=[ft.dropdown.Option(key=k, text=k) for k in EXPORT_FORMATS],
+        border={
+            ft.ControlState.DEFAULT: ft.OutlineInputBorder(
+                border_radius=12, side=ft.BorderSide(1, BORDER)
+            ),
+            ft.ControlState.FOCUSED: ft.OutlineInputBorder(
+                border_radius=12, side=ft.BorderSide(1, ACCENT)
+            ),
+        },
+    )
+
+    # Panel de detalles - inspector estructurado clave-valor
+    info_details = ft.Column(
+        [
+            ft.Container(
+                content=ft.Text(
+                    "Selecciona una serie para ver sus metadatos",
+                    size=12,
+                    color=MUTED,
+                ),
+                padding=ft.Padding.symmetric(vertical=8),
+            )
+        ],
+        spacing=6,
+        scroll=ft.ScrollMode.AUTO,
+        expand=True,
+        horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+    )
+
+    def show_details(values):
+        """Render the structured key-value inspector for one series."""
+        info_details.controls.clear()
+        info_details.controls.append(
+            ft.Row(
+                [
+                    ft.Text(values["Código"], size=16, weight=ft.FontWeight.W_600, color=TEXT),
+                    ft.Container(expand=True),
+                    ft.Container(
+                        content=ft.Text(values["Frecuencia"], size=10, color="#bfdbfe"),
+                        bgcolor=ACCENT_SOFT,
+                        border_radius=6,
+                        padding=ft.Padding.symmetric(horizontal=8, vertical=2),
+                    ),
+                ],
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            )
+        )
+        info_details.controls.append(ft.Text(values["Nombre"], size=12, color=MUTED))
+        info_details.controls.append(ft.Divider(height=12, thickness=1, color=BORDER))
+        for label, val in values.items():
+            if label in ("Código", "Nombre", "Frecuencia", "Descripción"):
+                continue
+            info_details.controls.append(
+                ft.Row(
+                    [
+                        ft.Container(content=ft.Text(label, size=12, color=MUTED), width=110),
+                        ft.Container(content=ft.Text(val, size=12, color=TEXT), expand=True),
+                    ],
+                    spacing=8,
+                )
+            )
+        if values.get("Descripción"):
+            info_details.controls.append(ft.Divider(height=8, thickness=1, color=BORDER))
+            info_details.controls.append(
+                ft.Text("Descripción", size=11, weight=ft.FontWeight.W_600, color=MUTED)
+            )
+            info_details.controls.append(
+                ft.Text(values["Descripción"], size=12, color=TEXT, selectable=True)
+            )
+            pdf_url = find_pdf_url(values["Descripción"])
+            if pdf_url:
+                async def open_pdf(e, url=pdf_url):
+                    try:
+                        await url_launcher.launch_url(url)
+                    except Exception as ex:
+                        notify(f"No se pudo abrir el PDF: {ex}", ft.Colors.AMBER)
+
+                info_details.controls.append(
+                    ft.Button(
+                        content="Descargar documentación PDF",
+                        icon=ft.Icons.PICTURE_AS_PDF,
+                        on_click=open_pdf,
+                        height=38,
+                        style=ft.ButtonStyle(
+                            bgcolor="#dc2626",
+                            color="#ffffff",
+                            elevation=2,
+                            shadow_color="#dc262666",
+                            shape=ft.RoundedRectangleBorder(radius=10),
+                            padding=ft.Padding.symmetric(horizontal=16, vertical=8),
+                            text_style=ft.TextStyle(size=13, weight=ft.FontWeight.W_600),
+                        ),
+                    )
+                )
+
+    # --- Filtros avanzados: sólo fechas ---
+    def make_filter_date(label):
+        field = ft.TextField(
+            label=label,
+            dense=True,
+            read_only=True,
+            width=150,
+            filled=True,
+            fill_color=SURFACE_2,
+            label_style=ft.TextStyle(size=11, color=MUTED),
+            border={
+                ft.ControlState.DEFAULT: ft.OutlineInputBorder(
+                    border_radius=10, side=ft.BorderSide(1, BORDER)
+                ),
+                ft.ControlState.FOCUSED: ft.OutlineInputBorder(
+                    border_radius=10, side=ft.BorderSide(1, ACCENT)
+                ),
+            },
+        )
+        picker = ft.DatePicker(first_date=datetime(1900, 1, 1), last_date=datetime(2035, 12, 31))
+
+        def on_pick(e):
+            if picker.value:
+                field.value = picker.value.strftime("%Y-%m-%d")
+                page.update()
+
+        picker.on_change = on_pick
+        button = ft.IconButton(
+            icon=ft.Icons.CALENDAR_MONTH,
+            icon_size=18,
+            icon_color=MUTED,
+            tooltip=label,
+            on_click=lambda e: page.show_dialog(picker),
+        )
+        return ft.Row([field, button], spacing=2, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+
+    filtro_creacion_desde = make_filter_date("Creación desde")
+    filtro_creacion_hasta = make_filter_date("Creación hasta")
+    filtro_actual_desde = make_filter_date("Actualización desde")
+    filtro_actual_hasta = make_filter_date("Actualización hasta")
+
+    def gather_filters():
+        filters = {"frecuencia": freq_state["value"]}
+        try:
+            filters.update(
+                {
+                    "area": adv_area.value,
+                    "fuente": adv_fuente.value,
+                    "categoria": adv_categoria.value,
+                    "grupo_serie": adv_grupo.value,
+                }
+            )
+        except NameError:
+            pass
+        filters.update(
+            {
+                "creacion_desde": filtro_creacion_desde.controls[0].value,
+                "creacion_hasta": filtro_creacion_hasta.controls[0].value,
+                "actual_desde": filtro_actual_desde.controls[0].value,
+                "actual_hasta": filtro_actual_hasta.controls[0].value,
+            }
+        )
+        return filters
+
+    # Aplica filtros de los desplegables + búsqueda de texto
+    def apply_filters(e):
+        df = filter_metadata(df_metadata, gather_filters())
+        query = search_box.value.strip().lower()
+        if query:
+            mask = df.apply(
+                lambda r: query in str(r[KNOWN_CODE_COL]) or query in str(r[KNOWN_NAME_COL]),
+                axis=1,
+            )
+            df = df[mask]
+        build_listbox(df)
+
+    search_box.on_change = apply_filters
+
+    # Descarga de una serie (reutilizada por el botón y por cada fila)
+    def do_download(code, silent=False):
+        code = code.strip()
+        if not code:
+            if not silent:
+                notify("Selecciona una serie de la lista", ft.Colors.AMBER)
+            return None
+
+        start = start_input.value.strip()
+        end = end_input.value.strip()
+
+        if not start or not end:
+            if not silent:
+                notify("Elige las fechas de inicio y fin", ft.Colors.AMBER)
+            return None
+
+        fmt = (format_dd.value or "CSV").lower()
+        if fmt not in EXPORT_FORMATS.values():
+            if not silent:
+                notify(f"Formato no soportado: {fmt}", ft.Colors.AMBER)
+            return None
+
+        safe_code = re.sub(r"[^\w\-_.]", "_", code.upper())
+
+        # XLS: BCRP entrega un .xls binario genuino sólo por su endpoint
+        if fmt == "xls":
+            api_url = f"https://estadisticas.bcrp.gob.pe/estadisticas/series/api/{code}/xls/{start}/{end}/esp"
+            try:
+                content = _http_get_bytes(api_url, max_retries=3, timeout=30)
+            except Exception as ex:
+                if not silent:
+                    notify(f"Error API: {ex}")
+                return None
+            filepath = os.path.join(OUTPUT_DIR, f"bcrp_serie_{safe_code}_{start}_to_{end}.xls")
+            with open(filepath, "wb") as f:
+                f.write(content)
+            if not silent:
+                notify(f"Guardado: {filepath}", ft.Colors.GREEN)
+            return filepath
+
+        api_url = f"https://estadisticas.bcrp.gob.pe/estadisticas/series/api/{code}/json/{start}/{end}/esp"
+        try:
+            data = _http_get_json(api_url, max_retries=3, timeout=30)
+        except Exception as ex:
+            if not silent:
+                notify(f"Error API: {ex}")
+            return None
+
+        if not data.get("periods", []):
+            if not silent:
+                notify("No hay datos para el rango consultado", ft.Colors.AMBER)
+            return None
+
+        df_result = periods_to_dataframe(data, code)
+        try:
+            filepath = export_series(df_result, code, start, end, fmt)
+        except Exception as ex:
+            if not silent:
+                notify(f"Error al exportar: {ex}")
+            return None
+
+        if not silent:
+            notify(f"Guardado: {filepath}", ft.Colors.GREEN)
+        return filepath
+
+    def download_click(e):
+        # Descarga en lote si hay varias series marcadas; si no, la activa
+        if selected_codes:
+            saved, failed = 0, 0
+            for code in list(selected_codes):
+                if do_download(code, silent=True):
+                    saved += 1
+                else:
+                    failed += 1
+            color = ft.Colors.GREEN if saved else ft.Colors.AMBER
+            msg = f"Descargadas {saved} series"
+            if failed:
+                msg += f" ({failed} fallidas)"
+            notify(msg, color)
+            return
+        do_download(selected_code.value)
+
+    download_btn = ft.Button(
+        content="Descargar",
+        icon=ft.Icons.DOWNLOAD,
+        on_click=download_click,
+        height=44,
+        style=ft.ButtonStyle(
+            shape=ft.RoundedRectangleBorder(radius=10),
+            bgcolor=ACCENT,
+            color="#ffffff",
+            elevation=4,
+            shadow_color=ACCENT_BORDER,
+            padding=ft.Padding.symmetric(horizontal=20, vertical=10),
+            text_style=ft.TextStyle(size=14, weight=ft.FontWeight.W_600),
+        ),
+    )
+
+    # --- Filtros avanzados colapsables ---
+    def make_adv_dd(label, column):
+        values = sorted(df_metadata[column].dropna().astype(str).unique())
+        return ft.Dropdown(
+            label=label,
+            value="",
+            dense=True,
+            filled=True,
+            fill_color=SURFACE,
+            text_size=12,
+            label_style=ft.TextStyle(size=11, color=MUTED),
+            options=[ft.dropdown.Option(key="", text="Todos")]
+            + [ft.dropdown.Option(key=v, text=v) for v in values],
+            on_select=lambda e: apply_filters(None),
+            border={
+                ft.ControlState.DEFAULT: ft.OutlineInputBorder(
+                    border_radius=10, side=ft.BorderSide(1, BORDER)
+                ),
+                ft.ControlState.FOCUSED: ft.OutlineInputBorder(
+                    border_radius=10, side=ft.BorderSide(1, ACCENT)
+                ),
+            },
+        )
+
+    adv_area = make_adv_dd("Área que publica", "Área que publica")
+    adv_fuente = make_adv_dd("Fuente", "Fuente")
+    adv_categoria = make_adv_dd("Categoría de serie", "Categoría de serie")
+    adv_grupo = make_adv_dd("Grupo de serie", "Grupo de serie")
+
+    def clear_filters(e):
+        for dd in (adv_area, adv_fuente, adv_categoria, adv_grupo):
+            dd.value = ""
+        for dc in (filtro_creacion_desde, filtro_creacion_hasta, filtro_actual_desde, filtro_actual_hasta):
+            dc.controls[0].value = ""
+        apply_filters(None)
+
+    def download_listing(e):
+        """Exporta el listado filtrado (metadatos) en el formato elegido."""
+        df = filter_metadata(df_metadata, gather_filters())
+        query = search_box.value.strip().lower()
+        if query:
+            mask = df.apply(
+                lambda r: query in str(r[KNOWN_CODE_COL]) or query in str(r[KNOWN_NAME_COL]),
+                axis=1,
+            )
+            df = df[mask]
+        if df.empty:
+            notify("No hay resultados para descargar", ft.Colors.AMBER)
+            return
+        fmt = (format_dd.value or "CSV").lower()
+        if fmt == "xls":
+            fmt = "csv"  # xls sólo aplica a series
+        try:
+            filepath = export_table(df, "bcrp_listado_filtrado", fmt)
+        except Exception as ex:
+            notify(f"Error al exportar: {ex}")
+            return
+        notify(f"Guardado: {filepath} ({len(df)} series)", ft.Colors.GREEN)
+
+    adv_grid = ft.ResponsiveRow(
+        [adv_area, adv_fuente, adv_categoria, adv_grupo],
+        spacing=10,
+        run_spacing=10,
+    )
+    for ctrl in adv_grid.controls:
+        ctrl.col = {"xs": 12, "sm": 6}
+
+    advanced_panel = ft.Container(
+        visible=False,
+        content=ft.Column(
+            [
+                adv_grid,
+                ft.Text("Rango de creación", size=11, color=MUTED),
+                ft.Row([filtro_creacion_desde, filtro_creacion_hasta], spacing=10),
+                ft.Text("Rango de actualización", size=11, color=MUTED),
+                ft.Row([filtro_actual_desde, filtro_actual_hasta], spacing=10),
+                ft.Row(
+                    [
+                        ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED)),
+                        ft.TextButton(
+                            "Descargar listado",
+                            icon=ft.Icons.FILTER_LIST,
+                            on_click=download_listing,
+                            style=ft.ButtonStyle(color=TEXT),
+                        ),
+                    ],
+                    spacing=4,
+                ),
+            ],
+            spacing=10,
+        ),
+        padding=14,
+        bgcolor=SURFACE_2,
+        border=ft.Border.all(1, BORDER),
+        border_radius=12,
+    )
+
+    filter_btn = ft.OutlinedButton(
+        content="Filtros Avanzados ⚙️",
+        icon=ft.Icons.TUNE,
+        height=38,
+        style=ft.ButtonStyle(
+            color=TEXT,
+            side=ft.BorderSide(1, BORDER),
+            shape=ft.RoundedRectangleBorder(radius=10),
+        ),
+    )
+
+    def toggle_advanced(e):
+        showing = not advanced_panel.visible
+        advanced_panel.visible = showing
+        filter_btn.style = ft.ButtonStyle(
+            color=ACCENT if showing else TEXT,
+            side=ft.BorderSide(1, ACCENT if showing else BORDER),
+            shape=ft.RoundedRectangleBorder(radius=10),
+        )
+        page.update()
+
+    filter_btn.on_click = toggle_advanced
+
+    # Construir lista al iniciar
+    build_listbox(df_metadata)
+
+    # Navegación por teclado: flechas mueven el foco, Enter/Espacio marca
+    async def on_keyboard(e):
+        raw = e.key or ""
+        key = raw.replace(" ", "").lower()
+        if not visible_cards:
+            return
+        if key in ("arrowdown", "arrowup"):
+            step = 1 if key == "arrowdown" else -1
+            new_index = max(0, min(len(visible_cards) - 1, focused["index"] + step))
+            if new_index != focused["index"]:
+                focused["index"] = new_index
+                restyle_cards()
+                try:
+                    await series_list_view.scroll_to(delta=step * 64, duration=120)
+                except Exception:
+                    pass
+                page.update()
+        elif key == "enter" or raw == " " or key in ("space", "spacebar"):
+            idx = focused["index"]
+            if 0 <= idx < len(visible_cards):
+                entry = visible_cards[idx]
+                toggle_selection(entry)
+                selected_code.value = entry["code"]
+                show_details(entry["values"])
+                restyle_cards()
+                page.update()
+
+    page.on_keyboard_event = on_keyboard
+
+    # --- Acerca de ---
+    async def open_bcrp_docs(e):
+        try:
+            await url_launcher.launch_url(
+                "https://estadisticas.bcrp.gob.pe/estadisticas/series/"
+            )
+        except Exception:
+            pass
+
+    about_dialog = ft.AlertDialog(
+        modal=True,
+        bgcolor=SURFACE,
+        shape=ft.RoundedRectangleBorder(radius=16),
+        title=ft.Row(
+            [
+                ft.Icon(ft.Icons.INFO_OUTLINE, color=ACCENT, size=20),
+                ft.Text("Acerca de", size=18, weight=ft.FontWeight.W_700, color=TEXT),
+            ],
+            spacing=8,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+        content=ft.Container(
+            width=400,
+            content=ft.Column(
+                [
+                    ft.Text(APP_NAME, size=16, weight=ft.FontWeight.W_700, color=TEXT),
+                    ft.Text(f"Versión {APP_VERSION}", size=12, color=MUTED),
+                    ft.Divider(height=16, thickness=1, color=BORDER),
+                    ft.Text(
+                        "Explorador y extractor de series estadísticas del Banco "
+                        "Central de Reserva del Perú. Busca, filtra y descarga "
+                        "metadatos y series históricas en CSV, JSON, XLS, XML, "
+                        "TXT o HTML.",
+                        size=12,
+                        color=TEXT,
+                    ),
+                    ft.Text(
+                        "Stack: Python · Flet 1.0.5 · pandas · requests",
+                        size=11,
+                        color=MUTED,
+                    ),
+                    ft.Text(
+                        "Fuente de datos: Banco Central de Reserva del Perú",
+                        size=11,
+                        color=MUTED,
+                    ),
+                ],
+                spacing=8,
+            ),
+        ),
+        actions=[
+            ft.TextButton(
+                "Sitio del BCRP",
+                icon=ft.Icons.LINK,
+                on_click=open_bcrp_docs,
+                style=ft.ButtonStyle(color=TEXT),
+            ),
+            ft.Button(
+                "Cerrar",
+                on_click=lambda e: page.pop_dialog(),
+                style=ft.ButtonStyle(
+                    bgcolor=ACCENT,
+                    color="#ffffff",
+                    shape=ft.RoundedRectangleBorder(radius=10),
+                ),
+            ),
+        ],
+        actions_alignment=ft.MainAxisAlignment.END,
+    )
+
+    def toggle_theme(e):
+        mode = theme_controller.toggle()
+        e.control.icon = (
+            ft.Icons.LIGHT_MODE if mode == ft.ThemeMode.LIGHT else ft.Icons.DARK_MODE
+        )
+        page.update()
+
+    footer = ft.Row(
+        [
+            ft.TextButton(
+                "Acerca de",
+                icon=ft.Icons.INFO_OUTLINE,
+                on_click=lambda e: page.show_dialog(about_dialog),
+                style=ft.ButtonStyle(color=MUTED, text_style=ft.TextStyle(size=12)),
+            ),
+            ft.Container(expand=True),
+            ft.IconButton(
+                icon=ft.Icons.LIGHT_MODE if theme_controller.is_light else ft.Icons.DARK_MODE,
+                icon_size=18,
+                icon_color=MUTED,
+                tooltip="Cambiar tema",
+                on_click=lambda e: toggle_theme(e),
+            ),
+            ft.Text(f"v{APP_VERSION}", size=11, color=MUTED),
+        ],
+        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+    )
+
+    frequency_box = ft.Container(
+        content=frequency_selector,
+        padding=ft.Padding.symmetric(horizontal=2, vertical=2),
+    )
+
+    # Layout principal: dos superficies elevadas (Bento)
+    left_panel = ft.Container(
+        content=ft.Column(
+            [
+                ft.Row(
+                    [
+                        ft.Text("Catálogo de Series", size=18, weight=ft.FontWeight.W_700, color=TEXT),
+                        ft.Container(expand=True),
+                        ft.Text(f"{len(df_metadata):,} series", size=11, color=MUTED),
+                    ],
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                ft.Text("Explora y filtra el catálogo del BCRP", size=12, color=MUTED),
+                search_box,
+                frequency_box,
+                filter_btn,
+                advanced_panel,
+                ft.Text("Resultados", size=12, color=MUTED),
+                ft.Container(content=series_list_view, expand=True),
+                footer,
+            ],
+            spacing=12,
+            expand=True,
+        ),
+        expand=3,
+        padding=18,
+        bgcolor=SURFACE,
+        border=ft.Border.all(1, BORDER),
+        border_radius=RADIUS,
+    )
+
+    # Panel derecho: parámetros y metadatos
+    params_card = ft.Container(
+        content=ft.Column(
+            [
+                ft.Text("Rango de fechas", size=11, color=MUTED),
+                ft.Row(
+                    [start_control, end_control],
+                    spacing=12,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                ft.Text("Formato de salida", size=11, color=MUTED),
+                ft.Row(
+                    [format_dd, download_btn],
+                    spacing=12,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+            ],
+            spacing=10,
+        ),
+        padding=14,
+        bgcolor=SURFACE_2,
+        border=ft.Border.all(1, BORDER),
+        border_radius=12,
+    )
+
+    right_panel = ft.Container(
+        content=ft.Column(
+            [
+                ft.Text("Parámetros", size=18, weight=ft.FontWeight.W_700, color=TEXT),
+                ft.Text("Define el rango y el formato de salida", size=12, color=MUTED),
+                params_card,
+                ft.Text("Detalles de la serie", size=12, color=MUTED),
+                ft.Container(
+                    content=info_details,
+                    padding=14,
+                    bgcolor=SURFACE_2,
+                    border=ft.Border.all(1, BORDER),
+                    border_radius=12,
+                    expand=True,
+                ),
+            ],
+            spacing=12,
+            expand=True,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+        ),
+        expand=2,
+        padding=18,
+        bgcolor=SURFACE,
+        border=ft.Border.all(1, BORDER),
+        border_radius=RADIUS,
+    )
+
+    page.add(
+        ft.Row(
+            [left_panel, right_panel],
+            spacing=16,
+            expand=True,
+            vertical_alignment=ft.CrossAxisAlignment.STRETCH,
+        ),
+    )
+
+
