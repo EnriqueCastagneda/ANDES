@@ -17,6 +17,8 @@ on:
 jobs:
   build:
     name: build-${{ matrix.name }}
+    permissions:
+      contents: read
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
