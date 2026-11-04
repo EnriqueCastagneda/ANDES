@@ -30,6 +30,7 @@ de IA.
 
 ## Ejecutables compilados
 
+<!-- DOWNLOADS:START -->
 Descarga los archivos de la versión [v1.1.0](https://github.com/EnriqueCastagneda/BCRP-Downloader/releases/tag/v1.1.0):
 
 | Plataforma | Descarga |
@@ -41,6 +42,9 @@ Descarga los archivos de la versión [v1.1.0](https://github.com/EnriqueCastagne
 | Web | [bcrp-downloader-web-1.1.0.zip](https://github.com/EnriqueCastagneda/BCRP-Downloader/releases/download/v1.1.0/bcrp-downloader-web-1.1.0.zip) |
 
 Consulta la página de [releases](https://github.com/EnriqueCastagneda/BCRP-Downloader/releases) para descargar otras versiones.
+<!-- DOWNLOADS:END -->
+
+> Esta sección se actualiza automáticamente en cada release (`build_release.yml`).
 
 ## Instalación
 
