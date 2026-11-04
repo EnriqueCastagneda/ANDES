@@ -31,10 +31,16 @@ def download_metadata():
 def load_metadata():
     """Carga el catálogo CSV y normaliza columnas."""
     path = download_metadata()
-    df = pd.read_csv(path, sep=";", encoding="latin-1")
+    df = pd.read_csv(
+        path,
+        sep=";",
+        encoding="latin-1",
+        dtype=str,
+        keep_default_na=False,
+        low_memory=False,
+    )
     if "Unnamed: 18" in df.columns:
         df = df.drop(columns=["Unnamed: 18"])
-    df = df.astype(str)
     df[KNOWN_CODE_COL] = df[KNOWN_CODE_COL].str.strip().str.lower()
     df[KNOWN_NAME_COL] = df[KNOWN_NAME_COL].str.strip().str.lower()
     return df

@@ -16,8 +16,8 @@ publicar manualmente y `build_release.yml` publica al crear un tag `v*`.
 ## Publicar
 
 ```bash
-git tag -a v1.1.2 -m "BCRP Downloader v1.1.2"
-git push origin v1.1.2
+git tag -a v1.1.3 -m "BCRP Downloader v1.1.3"
+git push origin v1.1.3
 ```
 
 El job `Publish to PyPI` construye `sdist`/`wheel`, los valida con `twine check`
