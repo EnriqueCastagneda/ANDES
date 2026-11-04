@@ -156,8 +156,8 @@ Las pruebas de red usan mocks; no dependen de la disponibilidad del BCRP.
 Publicar una versión:
 
 ```bash
-git tag -a v1.1.0 -m "BCRP Downloader v1.1.0"
-git push origin v1.1.0
+git tag -a v1.1.1 -m "BCRP Downloader v1.1.1"
+git push origin v1.1.1
 ```
 
 ## Datos y API
