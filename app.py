@@ -242,6 +242,19 @@ def filter_metadata(df, filters):
     return out
 
 
+PDF_URL_RE = re.compile(
+    r"https?://[^\s\"'<>]+?\.pdf(?:\?[^\s\"'<>]*)?", re.IGNORECASE
+)
+
+
+def find_pdf_url(text):
+    """Return the first .pdf URL found in text, or None."""
+    if not text:
+        return None
+    match = PDF_URL_RE.search(str(text))
+    return match.group(0) if match else None
+
+
 def export_table(df, basename, fmt, out_dir=None):
     """Export an arbitrary DataFrame (e.g. a metadata listing) to disk."""
     if out_dir is None:
@@ -304,6 +317,13 @@ def main(page: ft.Page):
     except Exception as e:
         notify(f"Error al cargar metadatos: {e}")
         return
+
+    # Servicio para abrir enlaces externos (documentación PDF)
+    url_launcher = ft.UrlLauncher()
+    try:
+        page.services.append(url_launcher)
+    except Exception:
+        pass
 
     # Estado reactivo
     selected_code = ft.Text(value="", visible=False)
@@ -628,6 +648,31 @@ def main(page: ft.Page):
                                 selectable=True,
                             )
                         )
+                        pdf_url = find_pdf_url(values["Descripción"])
+                        if pdf_url:
+                            async def open_pdf(e, url=pdf_url):
+                                try:
+                                    await url_launcher.launch_url(url)
+                                except Exception as ex:
+                                    notify(f"No se pudo abrir el PDF: {ex}", ft.Colors.AMBER)
+
+                            info_details.controls.append(
+                                ft.Button(
+                                    content="Descargar documentación PDF",
+                                    icon=ft.Icons.PICTURE_AS_PDF,
+                                    on_click=open_pdf,
+                                    height=38,
+                                    style=ft.ButtonStyle(
+                                        bgcolor="#dc2626",
+                                        color="#ffffff",
+                                        elevation=2,
+                                        shadow_color="#dc262666",
+                                        shape=ft.RoundedRectangleBorder(radius=10),
+                                        padding=ft.Padding.symmetric(horizontal=16, vertical=8),
+                                        text_style=ft.TextStyle(size=13, weight=ft.FontWeight.W_600),
+                                    ),
+                                )
+                            )
                     page.update()
                 return item_clicked
 
