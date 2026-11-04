@@ -36,6 +36,14 @@ mcp = ["mcp>=1.2"]
 dev = ["pytest>=8.0", "ruff>=0.5", "build>=1.0"]
 all = ["mcp>=1.2"]
 
+[dependency-groups]
+dev = [
+    "flet-cli==1.0.5",
+    "pytest>=8.0",
+    "ruff>=0.5",
+    "build>=1.0",
+]
+
 [project.scripts]
 bcrp = "bcrp_downloader.cli.main:app"
 
