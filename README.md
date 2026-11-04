@@ -150,8 +150,8 @@ Las pruebas de red usan mocks; no dependen de la disponibilidad del BCRP.
   Ubuntu, Windows y macOS (Python 3.10 y 3.12) en cada push/PR.
 - **Build and release** (`.github/workflows/build_release.yml`): al crear un tag
   `v*`, construye `sdist`/`wheel`, compila binarios con `flet-build-action`
-  (Linux, Windows, macOS, APK y Web), publica en PyPI (si existe
-  `PYPI_API_TOKEN`) y crea el GitHub Release.
+  (Linux, Windows, macOS, APK y Web), publica en PyPI con Trusted Publishing y
+  crea el GitHub Release. Configuración: [docs/PUBLISHING.md](docs/PUBLISHING.md).
 
 Publicar una versión:
 
