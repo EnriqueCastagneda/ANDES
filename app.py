@@ -211,6 +211,7 @@ def filter_metadata(df, filters):
         "frecuencia": "Frecuencia",
         "grupo_publicacion": "Grupo de publicación",
         "area": "Área que publica",
+        "grupo_serie": "Grupo de serie",
     }
     for key, col in substr.items():
         val = (filters.get(key) or "").strip().lower()
@@ -735,6 +736,17 @@ def main(page: ft.Page):
 
     def gather_filters():
         filters = {"frecuencia": freq_state["value"]}
+        try:
+            filters.update(
+                {
+                    "area": adv_area.value,
+                    "fuente": adv_fuente.value,
+                    "categoria": adv_categoria.value,
+                    "grupo_serie": adv_grupo.value,
+                }
+            )
+        except NameError:
+            pass
         filters.update(
             {
                 "creacion_desde": filtro_creacion_desde.controls[0].value,
@@ -833,11 +845,41 @@ def main(page: ft.Page):
         ),
     )
 
-    # --- Menú de filtros avanzados: sólo fechas ---
+    # --- Filtros avanzados colapsables ---
+    def make_adv_dd(label, column):
+        values = sorted(df_metadata[column].dropna().astype(str).unique())
+        return ft.Dropdown(
+            label=label,
+            value="",
+            dense=True,
+            filled=True,
+            fill_color=SURFACE,
+            text_size=12,
+            label_style=ft.TextStyle(size=11, color=MUTED),
+            options=[ft.dropdown.Option(key="", text="Todos")]
+            + [ft.dropdown.Option(key=v, text=v) for v in values],
+            on_select=lambda e: apply_filters(None),
+            border={
+                ft.ControlState.DEFAULT: ft.OutlineInputBorder(
+                    border_radius=10, side=ft.BorderSide(1, BORDER)
+                ),
+                ft.ControlState.FOCUSED: ft.OutlineInputBorder(
+                    border_radius=10, side=ft.BorderSide(1, ACCENT)
+                ),
+            },
+        )
+
+    adv_area = make_adv_dd("Área que publica", "Área que publica")
+    adv_fuente = make_adv_dd("Fuente", "Fuente")
+    adv_categoria = make_adv_dd("Categoría de serie", "Categoría de serie")
+    adv_grupo = make_adv_dd("Grupo de serie", "Grupo de serie")
+
     def clear_filters(e):
+        for dd in (adv_area, adv_fuente, adv_categoria, adv_grupo):
+            dd.value = ""
         for dc in (filtro_creacion_desde, filtro_creacion_hasta, filtro_actual_desde, filtro_actual_hasta):
             dc.controls[0].value = ""
-        page.update()
+        apply_filters(None)
 
     def download_listing(e):
         """Exporta el listado filtrado (metadatos) en el formato elegido."""
@@ -862,56 +904,47 @@ def main(page: ft.Page):
             return
         notify(f"Guardado: {filepath} ({len(df)} series)", ft.Colors.GREEN)
 
-    def apply_advanced(e):
-        apply_filters(None)
-        page.pop_dialog()
+    adv_grid = ft.ResponsiveRow(
+        [adv_area, adv_fuente, adv_categoria, adv_grupo],
+        spacing=10,
+        run_spacing=10,
+    )
+    for ctrl in adv_grid.controls:
+        ctrl.col = {"xs": 12, "sm": 6}
 
-    filter_dialog = ft.AlertDialog(
-        modal=True,
-        bgcolor=SURFACE,
-        shape=ft.RoundedRectangleBorder(radius=16),
-        title=ft.Text("Filtros por fecha", size=18, weight=ft.FontWeight.W_700, color=TEXT),
-        content=ft.Container(
-            width=360,
-            content=ft.Column(
-                [
-                    ft.Text("Rango de creación", size=11, color=MUTED),
-                    ft.Row([filtro_creacion_desde, filtro_creacion_hasta], spacing=12),
-                    ft.Text("Rango de actualización", size=11, color=MUTED),
-                    ft.Row([filtro_actual_desde, filtro_actual_hasta], spacing=12),
-                ],
-                spacing=10,
-                scroll=ft.ScrollMode.AUTO,
-            ),
-        ),
-        actions=[
-            ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED)),
-            ft.TextButton(
-                "Descargar listado",
-                icon=ft.Icons.FILTER_LIST,
-                on_click=download_listing,
-                style=ft.ButtonStyle(color=TEXT),
-            ),
-            ft.Button(
-                "Aplicar",
-                on_click=apply_advanced,
-                style=ft.ButtonStyle(
-                    bgcolor=ACCENT,
-                    color="#ffffff",
-                    shape=ft.RoundedRectangleBorder(radius=10),
+    advanced_panel = ft.Container(
+        visible=False,
+        content=ft.Column(
+            [
+                adv_grid,
+                ft.Text("Rango de creación", size=11, color=MUTED),
+                ft.Row([filtro_creacion_desde, filtro_creacion_hasta], spacing=10),
+                ft.Text("Rango de actualización", size=11, color=MUTED),
+                ft.Row([filtro_actual_desde, filtro_actual_hasta], spacing=10),
+                ft.Row(
+                    [
+                        ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED)),
+                        ft.TextButton(
+                            "Descargar listado",
+                            icon=ft.Icons.FILTER_LIST,
+                            on_click=download_listing,
+                            style=ft.ButtonStyle(color=TEXT),
+                        ),
+                    ],
+                    spacing=4,
                 ),
-            ),
-        ],
-        actions_alignment=ft.MainAxisAlignment.END,
+            ],
+            spacing=10,
+        ),
+        padding=14,
+        bgcolor=SURFACE_2,
+        border=ft.Border.all(1, BORDER),
+        border_radius=12,
     )
 
-    def open_filters(e):
-        page.show_dialog(filter_dialog)
-
     filter_btn = ft.OutlinedButton(
-        content="Filtros por fecha",
-        icon=ft.Icons.FILTER_ALT,
-        on_click=open_filters,
+        content="Filtros Avanzados ⚙️",
+        icon=ft.Icons.TUNE,
         height=38,
         style=ft.ButtonStyle(
             color=TEXT,
@@ -919,6 +952,18 @@ def main(page: ft.Page):
             shape=ft.RoundedRectangleBorder(radius=10),
         ),
     )
+
+    def toggle_advanced(e):
+        showing = not advanced_panel.visible
+        advanced_panel.visible = showing
+        filter_btn.style = ft.ButtonStyle(
+            color=ACCENT if showing else TEXT,
+            side=ft.BorderSide(1, ACCENT if showing else BORDER),
+            shape=ft.RoundedRectangleBorder(radius=10),
+        )
+        page.update()
+
+    filter_btn.on_click = toggle_advanced
 
     # Construir lista al iniciar
     build_listbox(df_metadata)
@@ -944,6 +989,7 @@ def main(page: ft.Page):
                 search_box,
                 frequency_box,
                 filter_btn,
+                advanced_panel,
                 ft.Text("Resultados", size=12, color=MUTED),
                 ft.Container(content=series_list_view, expand=True),
             ],
