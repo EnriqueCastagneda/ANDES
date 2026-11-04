@@ -14,6 +14,9 @@ DATA_DIR = "data"
 OUTPUT_DIR = "outputs"
 METADATA_PATH = os.path.join(DATA_DIR, "metadata_bcrp.csv")
 
+APP_NAME = "BCRP Data Extractor"
+APP_VERSION = "1.0.0"
+
 KNOWN_CODE_COL = "Código de serie"
 KNOWN_NAME_COL = "Nombre de serie"
 
@@ -1055,6 +1058,90 @@ def main(page: ft.Page):
 
     page.on_keyboard_event = on_keyboard
 
+    # --- Acerca de ---
+    async def open_bcrp_docs(e):
+        try:
+            await url_launcher.launch_url(
+                "https://estadisticas.bcrp.gob.pe/estadisticas/series/"
+            )
+        except Exception:
+            pass
+
+    about_dialog = ft.AlertDialog(
+        modal=True,
+        bgcolor=SURFACE,
+        shape=ft.RoundedRectangleBorder(radius=16),
+        title=ft.Row(
+            [
+                ft.Icon(ft.Icons.INFO_OUTLINE, color=ACCENT, size=20),
+                ft.Text("Acerca de", size=18, weight=ft.FontWeight.W_700, color=TEXT),
+            ],
+            spacing=8,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+        content=ft.Container(
+            width=400,
+            content=ft.Column(
+                [
+                    ft.Text(APP_NAME, size=16, weight=ft.FontWeight.W_700, color=TEXT),
+                    ft.Text(f"Versión {APP_VERSION}", size=12, color=MUTED),
+                    ft.Divider(height=16, thickness=1, color=BORDER),
+                    ft.Text(
+                        "Explorador y extractor de series estadísticas del Banco "
+                        "Central de Reserva del Perú. Busca, filtra y descarga "
+                        "metadatos y series históricas en CSV, JSON, XLS, XML, "
+                        "TXT o HTML.",
+                        size=12,
+                        color=TEXT,
+                    ),
+                    ft.Text(
+                        "Stack: Python · Flet 1.0.5 · pandas · requests",
+                        size=11,
+                        color=MUTED,
+                    ),
+                    ft.Text(
+                        "Fuente de datos: Banco Central de Reserva del Perú",
+                        size=11,
+                        color=MUTED,
+                    ),
+                ],
+                spacing=8,
+            ),
+        ),
+        actions=[
+            ft.TextButton(
+                "Sitio del BCRP",
+                icon=ft.Icons.LINK,
+                on_click=open_bcrp_docs,
+                style=ft.ButtonStyle(color=TEXT),
+            ),
+            ft.Button(
+                "Cerrar",
+                on_click=lambda e: page.pop_dialog(),
+                style=ft.ButtonStyle(
+                    bgcolor=ACCENT,
+                    color="#ffffff",
+                    shape=ft.RoundedRectangleBorder(radius=10),
+                ),
+            ),
+        ],
+        actions_alignment=ft.MainAxisAlignment.END,
+    )
+
+    footer = ft.Row(
+        [
+            ft.TextButton(
+                "Acerca de",
+                icon=ft.Icons.INFO_OUTLINE,
+                on_click=lambda e: page.show_dialog(about_dialog),
+                style=ft.ButtonStyle(color=MUTED, text_style=ft.TextStyle(size=12)),
+            ),
+            ft.Container(expand=True),
+            ft.Text(f"v{APP_VERSION}", size=11, color=MUTED),
+        ],
+        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+    )
+
     frequency_box = ft.Container(
         content=frequency_selector,
         padding=ft.Padding.symmetric(horizontal=2, vertical=2),
@@ -1079,6 +1166,7 @@ def main(page: ft.Page):
                 advanced_panel,
                 ft.Text("Resultados", size=12, color=MUTED),
                 ft.Container(content=series_list_view, expand=True),
+                footer,
             ],
             spacing=12,
             expand=True,
