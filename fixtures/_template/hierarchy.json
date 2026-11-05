@@ -1,0 +1,21 @@
+{
+  "id": "nuevo",
+  "name": "Nombre completo de la institución",
+  "short_name": "SIGLA",
+  "base_url": "https://portal.gob.pe",
+  "metadata_url": "",
+  "endpoints": {
+    "series": "https://portal.gob.pe/api/{codes}/{start}/{end}"
+  },
+  "period_format": "2026",
+  "pagination": "",
+  "dimensions": [
+    {
+      "key": "inicio",
+      "label": "Año",
+      "kind": "select",
+      "options": []
+    }
+  ],
+  "pending": ["series", "endpoint de datos"]
+}

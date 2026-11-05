@@ -96,6 +96,17 @@ bcrp download-many PN00001MM PN00002MM PN00003MM -s 2024-1 -e 2024-12 -o lote.cs
 bcrp --help
 ```
 
+### Integración de portales
+
+Cada institución declara su jerarquía y su adaptador nativo. El descubrimiento
+usa Chromium local y, solo como último recurso, TinyFish. Guía completa:
+[`docs/portales.md`](docs/portales.md).
+
+```bash
+python scripts/discover_portal.py URL --out fixtures/<portal>/discovered.json
+python scripts/export_specs.py
+```
+
 ### Evaluación de la GUI web
 
 Con la app en marcha en otra terminal:
@@ -165,7 +176,7 @@ path = download_series_file("PN00001MM", "2024-1", "2024-12", "csv")
 ```text
 bcrp_downloader/
 ├── bcrp_downloader/
-│   ├── core/          # api.py, catalog.py, fetcher.py, metadata.py, http.py, paths.py, sources.py
+│   ├── core/          # api.py, catalog.py, fetcher.py, metadata.py, portals.py, adapters/, sources.py
 │   ├── gui/           # views.py, theme.py
 │   ├── cli/           # main.py (Typer)
 │   └── mcp/           # server.py

@@ -38,7 +38,7 @@ SOURCES: tuple[Source, ...] = (
         base_url="https://apps5.mineco.gob.pe/transparencia/Navegador/default.aspx",
         metadata_url="",
         filter_options={
-            "start": tuple(str(year) for year in range(2026, 2011, -1)),
+            "start": tuple(str(year) for year in range(1999, 2027)),
             "group_name": (
                 "Gobierno Nacional",
                 "Gobiernos Regionales",

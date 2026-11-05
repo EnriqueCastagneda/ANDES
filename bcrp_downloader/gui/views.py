@@ -12,6 +12,7 @@ import flet as ft
 import pandas as pd
 
 from .. import APP_NAME, APP_VERSION
+from ..core import portals
 from ..core.api import (
     EXPORT_FORMATS,
     download_many,
@@ -827,14 +828,9 @@ def main(page: ft.Page):
             )
             return filters
         # Filtros propios de MEF (y de futuras instituciones).
-        return {
-            "institucion": institution,
-            "inicio": mef_anio.value,
-            "grupo_serie": mef_nivel.value,
-            "categoria": mef_rubro.value,
-            "fuente": mef_fuente.value,
-            "grupo_publicacion": mef_programa.value,
-        }
+        filters = {"institucion": institution}
+        filters.update({key: widget.value for key, widget in mef_controls.items()})
+        return filters
 
     # Aplica filtros de los desplegables + búsqueda de texto (SQLite FTS5)
     def apply_filters(e):
@@ -1140,16 +1136,16 @@ def main(page: ft.Page):
     adv_grupo = make_adv_dd("Grupo de serie", "Grupo de serie")
 
     # Filtros propios del Portal de Transparencia (MEF).
-    mef_anio = make_adv_dd("Año", "inicio")
-    mef_nivel = make_adv_dd("Nivel de gobierno", "group_name")
-    mef_rubro = make_adv_dd("Rubro", "category")
-    mef_fuente = make_adv_dd("Fuente de financiamiento", "source")
-    mef_programa = make_adv_dd("Programa", "pub_group")
+    MEF_DIMENSIONS = portals.spec_for("mef").dimensions
+    mef_controls = {
+        dimension.key: make_adv_dd(dimension.label, dimension.key)
+        for dimension in MEF_DIMENSIONS
+    }
 
     def clear_filters(e):
         for dd in (adv_area, adv_fuente, adv_categoria, adv_grupo):
             dd.value = ""
-        for dd in (mef_anio, mef_nivel, mef_rubro, mef_fuente, mef_programa):
+        for dd in mef_controls.values():
             dd.value = ""
         for dc in (filtro_creacion_desde, filtro_creacion_hasta, filtro_actual_desde, filtro_actual_hasta):
             dc.controls[0].value = ""
@@ -1272,10 +1268,7 @@ def main(page: ft.Page):
                 if (control.controls[0].value or "").strip():
                     return True
             return False
-        return any(
-            (dd.value or "").strip()
-            for dd in (mef_anio, mef_nivel, mef_rubro, mef_fuente, mef_programa)
-        )
+        return any((dd.value or "").strip() for dd in mef_controls.values())
 
     def update_master_state():
         active = has_active_filters()
@@ -1634,7 +1627,7 @@ def main(page: ft.Page):
     )
 
     mef_grid = ft.ResponsiveRow(
-        [mef_anio, mef_nivel, mef_rubro, mef_fuente, mef_programa],
+        list(mef_controls.values()),
         spacing=10,
         run_spacing=10,
     )
@@ -1674,7 +1667,7 @@ def main(page: ft.Page):
         )
         for dropdown in (adv_area, adv_fuente, adv_categoria, adv_grupo):
             dropdown.value = ""
-        for dropdown in (mef_anio, mef_nivel, mef_rubro, mef_fuente, mef_programa):
+        for dropdown in mef_controls.values():
             dropdown.value = ""
         for control in (
             filtro_creacion_desde,
@@ -1842,13 +1835,9 @@ def main(page: ft.Page):
                     ft.dropdown.Option(key=value, text=value)
                     for value in catalog_values(field, "bcrp")
                 ]
-            for dropdown, field in (
-                (mef_anio, "start"),
-                (mef_nivel, "group_name"),
-                (mef_rubro, "category"),
-                (mef_fuente, "source"),
-                (mef_programa, "pub_group"),
-            ):
+            for dimension in MEF_DIMENSIONS:
+                dropdown = mef_controls[dimension.key]
+                field = portals.catalog_field(dimension.key)
                 dropdown.options = [ft.dropdown.Option(key="", text="Todos")] + [
                     ft.dropdown.Option(key=value, text=value)
                     for value in institution_filter_options("mef", field)
@@ -1877,7 +1866,7 @@ def main(page: ft.Page):
                 dropdown.options = [ft.dropdown.Option(key="", text="Todos")] + [
                     ft.dropdown.Option(key=value, text=value) for value in values
                 ]
-            for dropdown in (mef_anio, mef_nivel, mef_rubro, mef_fuente, mef_programa):
+            for dropdown in mef_controls.values():
                 dropdown.options = [ft.dropdown.Option(key="", text="Todos")]
 
         metadata_state["ready"] = True

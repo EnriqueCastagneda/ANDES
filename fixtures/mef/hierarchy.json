@@ -1,0 +1,100 @@
+{
+  "id": "mef",
+  "name": "Ministerio de Economía y Finanzas - Portal de Transparencia",
+  "short_name": "MEF",
+  "base_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/default.aspx",
+  "metadata_url": "",
+  "endpoints": {
+    "portal": "https://apps5.mineco.gob.pe/transparencia/Navegador/default.aspx"
+  },
+  "period_format": "2026",
+  "pagination": "",
+  "dimensions": [
+    {
+      "key": "inicio",
+      "label": "Año",
+      "kind": "select",
+      "options": [
+        "1999",
+        "2000",
+        "2001",
+        "2002",
+        "2003",
+        "2004",
+        "2005",
+        "2006",
+        "2007",
+        "2008",
+        "2009",
+        "2010",
+        "2011",
+        "2012",
+        "2013",
+        "2014",
+        "2015",
+        "2016",
+        "2017",
+        "2018",
+        "2019",
+        "2020",
+        "2021",
+        "2022",
+        "2023",
+        "2024",
+        "2025",
+        "2026"
+      ]
+    },
+    {
+      "key": "grupo_serie",
+      "label": "Nivel de gobierno",
+      "kind": "select",
+      "options": [
+        "Gobierno Nacional",
+        "Gobiernos Regionales",
+        "Gobiernos Locales"
+      ]
+    },
+    {
+      "key": "categoria",
+      "label": "Rubro",
+      "kind": "select",
+      "options": [
+        "Personal y Obligaciones Sociales",
+        "Obligaciones Previsionales",
+        "Bienes y Servicios",
+        "Transferencias",
+        "Otros Gastos",
+        "Adquisición de Activos no Financieros",
+        "Servicio de la Deuda",
+        "Donaciones y Transferencias"
+      ]
+    },
+    {
+      "key": "fuente",
+      "label": "Fuente de financiamiento",
+      "kind": "select",
+      "options": [
+        "Recursos Ordinarios",
+        "Recursos Directamente Recaudados",
+        "Recursos por Operaciones Oficiales de Crédito",
+        "Donaciones y Transferencias",
+        "Recursos Determinados"
+      ]
+    },
+    {
+      "key": "grupo_publicacion",
+      "label": "Programa",
+      "kind": "select",
+      "options": [
+        "Programas Presupuestales",
+        "Acciones Centrales",
+        "Asignaciones Presupuestarias que no resultan en Productos"
+      ]
+    }
+  ],
+  "pending": [
+    "series",
+    "endpoint de datos"
+  ]
+}
