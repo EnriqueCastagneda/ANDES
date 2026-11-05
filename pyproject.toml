@@ -33,7 +33,7 @@ dependencies = [
 
 [project.optional-dependencies]
 mcp = ["mcp>=1.2"]
-dev = ["pytest>=8.0", "ruff>=0.5", "build>=1.0"]
+dev = ["pytest>=8.0", "ruff>=0.5", "build>=1.0", "websocket-client>=1.7"]
 all = ["mcp>=1.2"]
 
 [dependency-groups]
@@ -42,6 +42,7 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.5",
     "build>=1.0",
+    "websocket-client>=1.7",
 ]
 
 [project.scripts]
