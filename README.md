@@ -93,6 +93,19 @@ bcrp download-many PN00001MM PN00002MM PN00003MM -s 2024-1 -e 2024-12 -o lote.cs
 bcrp --help
 ```
 
+### Evaluación de la GUI web
+
+Con la app en marcha en otra terminal:
+
+```bash
+bcrp gui --web --port 8550
+python scripts/eval_web_gui.py
+```
+
+Requiere Chromium y el extra de desarrollo (`websocket-client`). El script
+recorre catálogo, búsqueda, filtros, selección y descarga real, guarda capturas y
+`report.json` en `/tmp/opencode/eval-web`, y sale con código 1 si algo falla.
+
 ### MCP (Claude Desktop / Cursor)
 
 Instala el extra `mcp` y registra el servidor.
