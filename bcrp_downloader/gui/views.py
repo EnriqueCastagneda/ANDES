@@ -14,17 +14,22 @@ import pandas as pd
 from .. import APP_NAME, APP_VERSION
 from ..core.api import (
     EXPORT_FORMATS,
+    download_many,
     export_series,
     export_table,
     find_pdf_url,
     periods_to_dataframe,
 )
+from ..core.fetcher import fetch_series
 from ..core.http import _http_get_bytes, _http_get_json
 from ..core.metadata import (
     KNOWN_CODE_COL,
     KNOWN_NAME_COL,
-    filter_metadata,
+    catalog_count,
+    catalog_values,
     load_metadata,
+    search_catalog,
+    series_info,
 )
 from ..core.paths import DATA_DIR, OUTPUT_DIR
 from .theme import ThemeController
@@ -68,40 +73,45 @@ def main(page: ft.Page):
     notifications = []
     unread = {"count": 0}
     toast_state = {"running": False}
-    toast_column = ft.Column([], spacing=8, width=360)
+    initial_toast_width = int(
+        max(240, min(360, (page.width or page.window.width or 1180) * 0.9))
+    )
+    toast_column = ft.Column([], spacing=8, width=initial_toast_width)
     toast_container = ft.Container(
-        content=toast_column, right=20, top=20, width=360
+        content=toast_column, right=20, top=20, width=initial_toast_width
     )
-    copied_bubble = ft.Container(
-        content=ft.Text(
-            "Copied!",
-            size=12,
-            weight=ft.FontWeight.W_600,
-            color=ft.Colors.ON_SECONDARY_CONTAINER,
-        ),
-        bgcolor=ft.Colors.SECONDARY_CONTAINER,
-        border=ft.Border.all(1, BORDER),
-        border_radius=20,
-        padding=ft.Padding.symmetric(horizontal=16, vertical=8),
-        right=0,
-        bottom=34,
-        visible=False,
-        opacity=0,
-        offset=ft.Offset(0, -0.2),
-        animate_opacity=180,
-        animate_offset=180,
-        shadow=ft.BoxShadow(
-            blur_radius=12,
-            color=ft.Colors.with_opacity(0.25, ft.Colors.BLACK),
-            offset=ft.Offset(0, 4),
-        ),
-    )
+    def make_copied_bubble():
+        return ft.Container(
+            content=ft.Text(
+                "Copied!",
+                size=12,
+                weight=ft.FontWeight.W_600,
+                color=ft.Colors.ON_SECONDARY_CONTAINER,
+            ),
+            bgcolor=ft.Colors.SECONDARY_CONTAINER,
+            border=ft.Border.all(1, BORDER),
+            border_radius=20,
+            padding=ft.Padding.symmetric(horizontal=16, vertical=8),
+            right=0,
+            bottom=34,
+            visible=False,
+            opacity=0,
+            offset=ft.Offset(0, -0.2),
+            animate_opacity=180,
+            animate_offset=180,
+            shadow=ft.BoxShadow(
+                blur_radius=12,
+                color=ft.Colors.with_opacity(0.25, ft.Colors.BLACK),
+                offset=ft.Offset(0, 4),
+            ),
+        )
+
     toast_stack = ft.Stack([toast_container], expand=True)
     try:
         page.overlay.append(toast_stack)
     except Exception:
         pass
-    bubble_state = {"generation": 0}
+    bubble_state = {"generation": 0, "control": None}
 
     def _accent_for(color):
         if color in (ft.Colors.GREEN, ft.Colors.AMBER, ft.Colors.ERROR):
@@ -155,25 +165,28 @@ def main(page: ft.Page):
         unread["count"] += 1
 
     def show_copied_bubble():
-        """Show a small themed bubble above the About modal, then fade out."""
+        """Show the active About bubble, then fade it out."""
+        bubble = bubble_state.get("control")
+        if bubble is None:
+            return
         bubble_state["generation"] += 1
         token = bubble_state["generation"]
-        copied_bubble.visible = True
-        copied_bubble.opacity = 1
-        copied_bubble.offset = ft.Offset(0, 0)
-        refresh(copied_bubble)
+        bubble.visible = True
+        bubble.opacity = 1
+        bubble.offset = ft.Offset(0, 0)
+        refresh(bubble)
 
         def hide():
             time.sleep(1.4)
             if token != bubble_state["generation"]:
                 return
-            copied_bubble.opacity = 0
-            copied_bubble.offset = ft.Offset(0, -0.2)
-            refresh(copied_bubble)
+            bubble.opacity = 0
+            bubble.offset = ft.Offset(0, -0.2)
+            refresh(bubble)
             time.sleep(0.22)
             if token == bubble_state["generation"]:
-                copied_bubble.visible = False
-                refresh(copied_bubble)
+                bubble.visible = False
+                refresh(bubble)
 
         page.run_thread(hide)
 
@@ -279,10 +292,10 @@ def main(page: ft.Page):
             text = ft.Text(option, size=12, color=MUTED, weight=ft.FontWeight.W_500)
             pill = ft.Container(
                 content=text,
-                height=34,
-                padding=ft.Padding.symmetric(horizontal=14, vertical=0),
+                height=44,
+                padding=ft.Padding.symmetric(horizontal=16, vertical=0),
                 alignment=ft.Alignment.CENTER,
-                border_radius=17,
+                border_radius=22,
                 bgcolor=SURFACE_2,
                 border=ft.Border.all(1, BORDER),
                 ink=True,
@@ -367,6 +380,13 @@ def main(page: ft.Page):
 
         # Mostrar filas - limitado a 300 para rendimiento
         rows_to_show = df.head(300)
+        compact = (page.width or page.window.width or 1180) < 600
+        row_spacing = 8 if compact else 10
+        card_padding = ft.Padding.symmetric(
+            horizontal=10 if compact else 12,
+            vertical=8 if compact else 10,
+        )
+        name_size = 12 if compact else 13
 
         for idx, (_, row) in enumerate(rows_to_show.iterrows()):
             code_raw = str(row[KNOWN_CODE_COL])
@@ -389,8 +409,8 @@ def main(page: ft.Page):
 
             checkbox = ft.Checkbox(
                 value=code_raw in selected_codes,
-                width=28,
-                height=28,
+                width=40,
+                height=40,
                 visual_density=ft.VisualDensity.COMPACT,
                 fill_color=ACCENT,
                 check_color=ON_ACCENT,
@@ -408,6 +428,8 @@ def main(page: ft.Page):
                                 size=11,
                                 weight=ft.FontWeight.W_600,
                                 color=BADGE_TEXT,
+                                max_lines=1,
+                                overflow=ft.TextOverflow.ELLIPSIS,
                             ),
                             bgcolor=ACCENT_SOFT,
                             border=ft.Border.all(1, ACCENT_BORDER),
@@ -415,7 +437,13 @@ def main(page: ft.Page):
                             padding=ft.Padding.symmetric(horizontal=8, vertical=3),
                         ),
                         ft.Container(
-                            content=ft.Text(name_val, size=13, color=TEXT),
+                            content=ft.Text(
+                                name_val,
+                                size=name_size,
+                                color=TEXT,
+                                max_lines=2,
+                                overflow=ft.TextOverflow.ELLIPSIS,
+                            ),
                             expand=True,
                         ),
                         ft.IconButton(
@@ -426,10 +454,10 @@ def main(page: ft.Page):
                             on_click=make_item_download(code_raw),
                         ),
                     ],
-                    spacing=10,
+                    spacing=row_spacing,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
-                padding=ft.Padding.symmetric(horizontal=12, vertical=10),
+                padding=card_padding,
                 bgcolor=SURFACE_2,
                 border=ft.Border.all(1, BORDER),
                 border_radius=12,
@@ -563,8 +591,8 @@ def main(page: ft.Page):
             icon_size=18,
             icon_color=MUTED,
             tooltip="Elegir fecha",
-            width=32,
-            height=32,
+            width=40,
+            height=40,
             on_click=open_picker,
         )
         clear_btn = ft.IconButton(
@@ -572,8 +600,8 @@ def main(page: ft.Page):
             icon_size=16,
             icon_color=MUTED,
             tooltip="Borrar fecha",
-            width=32,
-            height=32,
+            width=40,
+            height=40,
             on_click=clear_date,
         )
         return ft.Row(
@@ -743,8 +771,8 @@ def main(page: ft.Page):
             icon_size=18,
             icon_color=MUTED,
             tooltip=label,
-            width=32,
-            height=32,
+            width=40,
+            height=40,
             on_click=lambda e: page.show_dialog(picker),
         )
         clear_btn = ft.IconButton(
@@ -752,8 +780,8 @@ def main(page: ft.Page):
             icon_size=16,
             icon_color=MUTED,
             tooltip=f"Borrar {label.lower()}",
-            width=32,
-            height=32,
+            width=40,
+            height=40,
             on_click=clear_date,
         )
         return ft.Row(
@@ -790,17 +818,16 @@ def main(page: ft.Page):
         )
         return filters
 
-    # Aplica filtros de los desplegables + búsqueda de texto
+    # Aplica filtros de los desplegables + búsqueda de texto (SQLite FTS5)
     def apply_filters(e):
         if not metadata_state["ready"]:
             return
-        df = filter_metadata(df_metadata, gather_filters())
-        query = search_box.value.strip().lower()
-        if query:
-            mask = df[KNOWN_CODE_COL].str.contains(
-                query, regex=False
-            ) | df[KNOWN_NAME_COL].str.contains(query, regex=False)
-            df = df[mask]
+        query = search_box.value.strip()
+        try:
+            df = search_catalog(query, filters=gather_filters(), limit=300)
+        except Exception as ex:
+            notify(f"Error de búsqueda: {ex}")
+            return
         build_listbox(df)
 
     search_state = {"generation": 0}
@@ -857,20 +884,38 @@ def main(page: ft.Page):
                 notify(f"Guardado: {filepath}", ft.Colors.GREEN)
             return filepath
 
-        api_url = f"https://estadisticas.bcrp.gob.pe/estadisticas/series/api/{code}/json/{start}/{end}/esp"
-        try:
-            data = _http_get_json(api_url, max_retries=3, timeout=30)
-        except Exception as ex:
-            if not silent:
-                notify(f"Error API: {ex}")
-            return None
-
-        if not data.get("periods", []):
-            if not silent:
-                notify("No hay datos para el rango consultado", ft.Colors.AMBER)
-            return None
-
-        df_result = periods_to_dataframe(data, code)
+        info = series_info(code)
+        frequency = (info or {}).get("Frecuencia")
+        if frequency:
+            try:
+                rows = fetch_series([code], start, end, frequency).get(code.upper(), [])
+            except Exception as ex:
+                if not silent:
+                    notify(f"Error API: {ex}")
+                return None
+            if not rows:
+                if not silent:
+                    notify("No hay datos para el rango consultado", ft.Colors.AMBER)
+                return None
+            df_result = pd.DataFrame(
+                {
+                    "fecha": [row["fecha"] for row in rows],
+                    code.upper(): [row["valor"] for row in rows],
+                }
+            )
+        else:  # serie fuera del catálogo: ruta antigua
+            api_url = f"https://estadisticas.bcrp.gob.pe/estadisticas/series/api/{code}/json/{start}/{end}/esp"
+            try:
+                data = _http_get_json(api_url, max_retries=3, timeout=30)
+            except Exception as ex:
+                if not silent:
+                    notify(f"Error API: {ex}")
+                return None
+            if not data.get("periods", []):
+                if not silent:
+                    notify("No hay datos para el rango consultado", ft.Colors.AMBER)
+                return None
+            df_result = periods_to_dataframe(data, code)
         try:
             filepath = export_series(df_result, code, start, end, fmt)
         except Exception as ex:
@@ -922,16 +967,70 @@ def main(page: ft.Page):
         progress_text.value = f"Preparando {total} serie(s)…"
         refresh(download_btn, progress_box)
 
+        start = start_input.value.strip()
+        end = end_input.value.strip()
+        fmt = (format_dd.value or "CSV").lower()
+
         def worker():
-            saved = failed = 0
-            for index, code in enumerate(codes, start=1):
-                progress_text.value = f"Descargando serie {index} de {total}…"
-                progress_bar.value = index / total if total > 1 else None
-                refresh(progress_bar, progress_text)
-                if do_download(code, silent=True):
-                    saved += 1
-                else:
-                    failed += 1
+            saved = failed = done = 0
+
+            if fmt == "xls":
+                for code in codes:
+                    done += 1
+                    progress_text.value = f"Descargando serie {done} de {total}…"
+                    progress_bar.value = done / total if total > 1 else None
+                    refresh(progress_bar, progress_text)
+                    if do_download(code, silent=True):
+                        saved += 1
+                    else:
+                        failed += 1
+            else:
+                groups: dict[str, list[str]] = {}
+                for code in codes:
+                    info = series_info(code)
+                    groups.setdefault((info or {}).get("Frecuencia") or "", []).append(code)
+
+                for gindex, (frequency, group) in enumerate(groups.items(), start=1):
+                    progress_text.value = (
+                        f"Lote {gindex} de {len(groups)}: {len(group)} serie(s)…"
+                    )
+                    refresh(progress_text)
+                    frame = None
+                    if frequency:
+                        try:
+                            frame = download_many(group, start, end, frequency)
+                        except Exception:
+                            frame = None
+
+                    if frame is None:  # respaldo serie por serie
+                        for code in group:
+                            done += 1
+                            progress_bar.value = done / total if total > 1 else None
+                            refresh(progress_bar)
+                            if do_download(code, silent=True):
+                                saved += 1
+                            else:
+                                failed += 1
+                        continue
+
+                    for code in group:
+                        column = code.strip().upper()
+                        done += 1
+                        progress_bar.value = done / total if total > 1 else None
+                        refresh(progress_bar)
+                        if column not in frame.columns:
+                            failed += 1
+                            continue
+                        subset = frame[["fecha", column]].dropna(subset=[column])
+                        if subset.empty:
+                            failed += 1
+                            continue
+                        try:
+                            export_series(subset, code, start, end, fmt)
+                            saved += 1
+                        except Exception:
+                            failed += 1
+
             download_state["running"] = False
             download_btn.disabled = False
             progress_box.visible = False
@@ -1007,14 +1106,12 @@ def main(page: ft.Page):
 
     def download_listing(e):
         """Exporta el listado filtrado (metadatos) en el formato elegido."""
-        df = filter_metadata(df_metadata, gather_filters())
-        query = search_box.value.strip().lower()
-        if query:
-            mask = df.apply(
-                lambda r: query in str(r[KNOWN_CODE_COL]) or query in str(r[KNOWN_NAME_COL]),
-                axis=1,
-            )
-            df = df[mask]
+        query = search_box.value.strip()
+        try:
+            df = search_catalog(query, filters=gather_filters(), limit=None)
+        except Exception as ex:
+            notify(f"Error al filtrar: {ex}")
+            return
         if df.empty:
             notify("No hay resultados para descargar", ft.Colors.AMBER)
             return
@@ -1069,7 +1166,7 @@ def main(page: ft.Page):
     filter_btn = ft.OutlinedButton(
         content="Filtros Avanzados ⚙️",
         icon=ft.Icons.TUNE,
-        height=38,
+        height=44,
         style=ft.ButtonStyle(
             color=TEXT,
             side=ft.BorderSide(1, BORDER),
@@ -1093,8 +1190,8 @@ def main(page: ft.Page):
     master_checkbox = ft.Checkbox(
         value=False,
         disabled=True,
-        width=28,
-        height=28,
+        width=40,
+        height=40,
         visual_density=ft.VisualDensity.COMPACT,
         fill_color=ACCENT,
         check_color=ON_ACCENT,
@@ -1215,99 +1312,126 @@ def main(page: ft.Page):
         update_bell()
         show_copied_bubble()
 
-    about_email = ft.TextButton(
-        content=ft.Row(
-            [
-                ft.Icon(ft.Icons.MAIL_OUTLINE, size=14, color=ACCENT),
-                ft.Text(
-                    "EnriqueCastagneda@protonmail.com",
-                    size=11,
-                    color=ACCENT,
-                ),
-            ],
-            spacing=6,
-            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-        ),
-        on_click=copy_contact,
-        style=ft.ButtonStyle(
-            padding=ft.Padding.symmetric(horizontal=4, vertical=2),
-            overlay_color=ft.Colors.with_opacity(0.08, ACCENT),
-        ),
-        tooltip="Copiar correo al portapapeles",
-    )
-    email_with_bubble = ft.Stack(
-        [about_email, copied_bubble],
-        clip_behavior=ft.ClipBehavior.NONE,
-    )
-
-    about_dialog = ft.AlertDialog(
-        modal=True,
-        bgcolor=SURFACE,
-        shape=ft.RoundedRectangleBorder(radius=16),
-        title=ft.Row(
-            [
-                ft.Icon(ft.Icons.INFO_OUTLINE, color=ACCENT, size=20),
-                ft.Text("Acerca de", size=18, weight=ft.FontWeight.W_700, color=TEXT),
-            ],
-            spacing=8,
-            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-        ),
-        content=ft.Container(
-            width=400,
-            content=ft.Column(
+    def build_about_content(mobile=False):
+        bubble = make_copied_bubble()
+        bubble_state["control"] = bubble
+        email_btn = ft.TextButton(
+            content=ft.Row(
                 [
-                    ft.Text(APP_NAME, size=16, weight=ft.FontWeight.W_700, color=TEXT),
-                    ft.Text(f"Versión {APP_VERSION}", size=12, color=MUTED),
-                    ft.Divider(height=16, thickness=1, color=BORDER),
+                    ft.Icon(ft.Icons.MAIL_OUTLINE, size=14, color=ACCENT),
                     ft.Text(
-                        "Explorador y extractor de series estadísticas del Banco "
-                        "Central de Reserva del Perú. Busca, filtra y descarga "
-                        "metadatos y series históricas en CSV, JSON, XLS, XML, "
-                        "TXT o HTML.",
-                        size=12,
-                        color=TEXT,
-                    ),
-                    ft.Divider(height=12, thickness=1, color=BORDER),
-                    ft.Text(
-                        "By Enrique Castañeda",
-                        size=12,
-                        weight=ft.FontWeight.W_600,
-                        color=TEXT,
-                    ),
-                    email_with_bubble,
-                    ft.Text(
-                        "Stack: Python · Flet 1.0.5 · pandas · requests",
+                        "EnriqueCastagneda@protonmail.com",
                         size=11,
-                        color=MUTED,
-                    ),
-                    ft.Text(
-                        "Fuente de datos: Banco Central de Reserva del Perú",
-                        size=11,
-                        color=MUTED,
+                        color=ACCENT,
                     ),
                 ],
-                spacing=8,
+                spacing=6,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
             ),
-        ),
-        actions=[
-            ft.TextButton(
-                "Sitio del BCRP",
-                icon=ft.Icons.LINK,
-                on_click=open_bcrp_docs,
-                style=ft.ButtonStyle(color=TEXT),
+            on_click=copy_contact,
+            style=ft.ButtonStyle(
+                padding=ft.Padding.symmetric(horizontal=4, vertical=2),
+                overlay_color=ft.Colors.with_opacity(0.08, ACCENT),
             ),
-            ft.Button(
-                "Cerrar",
-                on_click=lambda e: page.pop_dialog(),
-                style=ft.ButtonStyle(
-                    bgcolor=ACCENT,
-                    color=ON_ACCENT,
-                    shape=ft.RoundedRectangleBorder(radius=10),
+            tooltip="Copiar correo al portapapeles",
+        )
+        items = [
+            ft.Text(APP_NAME, size=16, weight=ft.FontWeight.W_700, color=TEXT),
+            ft.Text(f"Versión {APP_VERSION}", size=12, color=MUTED),
+            ft.Divider(height=16, thickness=1, color=BORDER),
+            ft.Text(
+                "Explorador y extractor de series estadísticas del Banco "
+                "Central de Reserva del Perú. Busca, filtra y descarga "
+                "metadatos y series históricas en CSV, JSON, XLS, XML, "
+                "TXT o HTML.",
+                size=12,
+                color=TEXT,
+            ),
+            ft.Divider(height=12, thickness=1, color=BORDER),
+            ft.Text(
+                "By Enrique Castañeda",
+                size=12,
+                weight=ft.FontWeight.W_600,
+                color=TEXT,
+            ),
+            ft.Stack([email_btn, bubble], clip_behavior=ft.ClipBehavior.NONE),
+            ft.Text(
+                "Stack: Python · Flet 1.0.5 · pandas · requests",
+                size=11,
+                color=MUTED,
+            ),
+            ft.Text(
+                "Fuente de datos: Banco Central de Reserva del Perú",
+                size=11,
+                color=MUTED,
+            ),
+        ]
+        if mobile:
+            items.append(
+                ft.TextButton(
+                    "Cerrar",
+                    on_click=lambda e: page.pop_dialog(),
+                    style=ft.ButtonStyle(color=MUTED),
+                )
+            )
+        return ft.Column(items, spacing=8)
+
+    def show_about(e):
+        mobile = (page.width or 0) < 600
+
+        def dismissed(ev=None):
+            bubble_state["control"] = None
+
+        content = build_about_content(mobile)
+        if mobile:
+            sheet = ft.BottomSheet(
+                content=ft.Container(
+                    content=content,
+                    padding=ft.Padding.all(16),
+                    width=(page.width or 390) * 0.92,
                 ),
+                bgcolor=SURFACE,
+                on_dismiss=dismissed,
+                show_drag_handle=True,
+                use_safe_area=True,
+                scrollable=True,
+            )
+            page.show_dialog(sheet)
+            return
+        dialog = ft.AlertDialog(
+            modal=True,
+            bgcolor=SURFACE,
+            shape=ft.RoundedRectangleBorder(radius=16),
+            title=ft.Row(
+                [
+                    ft.Icon(ft.Icons.INFO_OUTLINE, color=ACCENT, size=20),
+                    ft.Text("Acerca de", size=18, weight=ft.FontWeight.W_700, color=TEXT),
+                ],
+                spacing=8,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
             ),
-        ],
-        actions_alignment=ft.MainAxisAlignment.END,
-    )
+            content=ft.Container(width=400, content=content),
+            actions=[
+                ft.TextButton(
+                    "Sitio del BCRP",
+                    icon=ft.Icons.LINK,
+                    on_click=open_bcrp_docs,
+                    style=ft.ButtonStyle(color=TEXT),
+                ),
+                ft.Button(
+                    "Cerrar",
+                    on_click=lambda ev: page.pop_dialog(),
+                    style=ft.ButtonStyle(
+                        bgcolor=ACCENT,
+                        color=ON_ACCENT,
+                        shape=ft.RoundedRectangleBorder(radius=10),
+                    ),
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+            on_dismiss=dismissed,
+        )
+        page.show_dialog(dialog)
 
     def toggle_theme(e):
         mode = theme_controller.toggle()
@@ -1428,7 +1552,7 @@ def main(page: ft.Page):
             ft.TextButton(
                 "Acerca de",
                 icon=ft.Icons.INFO_OUTLINE,
-                on_click=lambda e: page.show_dialog(about_dialog),
+                on_click=show_about,
                 style=ft.ButtonStyle(color=MUTED, text_style=ft.TextStyle(size=12)),
             ),
             ft.Container(expand=True),
@@ -1450,6 +1574,11 @@ def main(page: ft.Page):
         content=frequency_selector,
         padding=ft.Padding.symmetric(horizontal=2, vertical=2),
     )
+
+    is_mobile = (page.width or page.window.width or 1180) < 600
+    panel_height = 520 if is_mobile else max(560, (page.height or page.window.height or 760) - 40)
+    panel_padding = 12 if is_mobile else 18
+    page.scroll = ft.ScrollMode.AUTO if is_mobile else None
 
     # Layout principal: dos superficies elevadas (Bento)
     left_panel_column = ft.Column(
@@ -1489,11 +1618,12 @@ def main(page: ft.Page):
         )
     left_panel = ft.Container(
         content=left_panel_column,
-        expand=3,
-        padding=18,
+        height=panel_height,
+        padding=panel_padding,
         bgcolor=SURFACE,
         border=ft.Border.all(1, BORDER),
         border_radius=RADIUS,
+        col={"xs": 12, "sm": 12, "md": 7, "lg": 8},
     )
 
     # Panel derecho: parámetros y metadatos
@@ -1549,45 +1679,76 @@ def main(page: ft.Page):
             expand=True,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         ),
-        expand=2,
-        padding=18,
+        height=620 if is_mobile else panel_height,
+        padding=panel_padding,
         bgcolor=SURFACE,
         border=ft.Border.all(1, BORDER),
         border_radius=RADIUS,
+        col={"xs": 12, "sm": 12, "md": 5, "lg": 4},
     )
 
     page.add(
-        ft.Row(
+        ft.ResponsiveRow(
             [left_panel, right_panel],
-            spacing=16,
-            expand=True,
-            vertical_alignment=ft.CrossAxisAlignment.STRETCH,
-        ),
+            spacing=16 if not is_mobile else 12,
+            run_spacing=16 if not is_mobile else 12,
+        )
     )
+
+    def on_resize(e):
+        mobile = (page.width or 0) < 600
+        available = (page.height or page.window.height or 760) - 40
+        left_panel.height = 520 if mobile else max(560, available)
+        right_panel.height = 620 if mobile else max(560, available)
+        page.scroll = ft.ScrollMode.AUTO if mobile else None
+        width = int(max(240, min(360, (page.width or 1180) * 0.9)))
+        toast_column.width = width
+        toast_container.width = width
+        page.update()
+
+    page.on_resize = on_resize
     ui_state["mounted"] = True
 
     def load_catalog():
-        """Load the CSV off the UI thread, then render the list once."""
+        """Indexa el catálogo en segundo plano y pinta la primera página."""
         nonlocal df_metadata
+        total = 0
         try:
-            df = load_metadata()
+            total = catalog_count()
+            for dropdown, field in (
+                (adv_area, "area"),
+                (adv_fuente, "source"),
+                (adv_categoria, "category"),
+                (adv_grupo, "group_name"),
+            ):
+                dropdown.options = [ft.dropdown.Option(key="", text="Todos")] + [
+                    ft.dropdown.Option(key=value, text=value)
+                    for value in catalog_values(field)
+                ]
+            df_metadata = search_catalog("", limit=300)
         except Exception as ex:
-            notify(f"Error al cargar metadatos: {ex}")
-            return
-        df_metadata = df
+            notify(f"Catálogo rápido no disponible: {ex}", ft.Colors.AMBER)
+            try:
+                legacy = load_metadata()
+            except Exception as inner:
+                notify(f"Error al cargar metadatos: {inner}")
+                return
+            total = len(legacy)
+            df_metadata = legacy.head(300)
+            for dropdown, column in (
+                (adv_area, "Área que publica"),
+                (adv_fuente, "Fuente"),
+                (adv_categoria, "Categoría de serie"),
+                (adv_grupo, "Grupo de serie"),
+            ):
+                values = sorted(legacy[column].dropna().astype(str).unique())
+                dropdown.options = [ft.dropdown.Option(key="", text="Todos")] + [
+                    ft.dropdown.Option(key=value, text=value) for value in values
+                ]
+
         metadata_state["ready"] = True
-        count_text.value = f"{len(df):,} series"
-        for dropdown, column in (
-            (adv_area, "Área que publica"),
-            (adv_fuente, "Fuente"),
-            (adv_categoria, "Categoría de serie"),
-            (adv_grupo, "Grupo de serie"),
-        ):
-            values = sorted(df[column].dropna().astype(str).unique())
-            dropdown.options = [ft.dropdown.Option(key="", text="Todos")] + [
-                ft.dropdown.Option(key=v, text=v) for v in values
-            ]
-        build_listbox(df)
+        count_text.value = f"{total:,} series"
+        build_listbox(df_metadata)
         refresh(series_list_view, count_text)
 
     page.run_thread(load_catalog)
