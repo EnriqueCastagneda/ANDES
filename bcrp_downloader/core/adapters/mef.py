@@ -45,6 +45,21 @@ def _year(name: str) -> str:
     return match.group(0) if match else ""
 
 
+def _bounds(start: str, end: str) -> tuple[str, str]:
+    """Normaliza un rango de periodos MEF (YYYY o YYYY-MM) a YYYY-MM."""
+
+    def norm(value: str, last: bool) -> str:
+        value = (value or "").strip()
+        if re.fullmatch(r"\d{4}", value):
+            return f"{value}-12" if last else f"{value}-01"
+        match = re.match(r"(\d{4})-(\d{1,2})", value)
+        if match:
+            return f"{int(match.group(1)):04d}-{int(match.group(2)):02d}"
+        return "0000-01" if not last else "9999-12"
+
+    return norm(start, False), norm(end, True)
+
+
 class MefAdapter:
     spec = spec_for("mef")
     _resource: str | None = None
@@ -116,9 +131,18 @@ class MefAdapter:
         if not concepts:
             return 0
 
+        months = [
+            int(record.get("MES_PRC"))
+            for record in records
+            if (record.get("MES_PRC") or "").isdigit()
+        ]
+        first_month = min(months) if months else 1
+        last_month = max(months) if months else 12
         rows = []
         for resource, meta in concepts.items():
             year = meta["year"] or _year(resource)
+            start = f"{int(year):04d}-{first_month:02d}"
+            end = f"{int(year):04d}-{last_month:02d}"
             rows.append(
                 {
                     "institution": "mef",
@@ -132,8 +156,8 @@ class MefAdapter:
                     "frequency": "Mensual",
                     "pub_group": meta["programa"],
                     "area": meta["fuente"],
-                    "start": year,
-                    "end": year,
+                    "start": start,
+                    "end": end,
                     "memo": json.dumps(
                         {"resource_id": resource_id, "recurso": resource, "year": year},
                         ensure_ascii=False,
@@ -151,7 +175,10 @@ class MefAdapter:
         frame = metadata.search_catalog(
             query, filters=scoped, limit=limit, offset=offset
         )
-        if frame.empty and query.strip():
+        legacy_periods = not frame.empty and all(
+            len(str(value)) == 4 for value in frame["Fecha de inicio"]
+        )
+        if query.strip() and (frame.empty or legacy_periods):
             if self._ingest(query.strip()):
                 frame = metadata.search_catalog(
                     query, filters=scoped, limit=limit, offset=offset
@@ -201,15 +228,20 @@ class MefAdapter:
                 except (TypeError, ValueError):
                     continue
             if totals:
-                ordered = sorted(totals)
-                frames.append(
-                    pd.DataFrame(
-                        {
-                            "fecha": ordered,
-                            code.upper(): [totals[key] for key in ordered],
-                        }
+                low, high = _bounds(start, end)
+                ordered = [
+                    key for key in sorted(totals)
+                    if low[:7] <= key[:7] <= high[:7]
+                ]
+                if ordered:
+                    frames.append(
+                        pd.DataFrame(
+                            {
+                                "fecha": ordered,
+                                code.upper(): [totals[key] for key in ordered],
+                            }
+                        )
                     )
-                )
 
         if not frames:
             return pd.DataFrame(columns=["fecha"])

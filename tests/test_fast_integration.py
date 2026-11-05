@@ -33,7 +33,7 @@ def _catalog(tmp_path, monkeypatch):
 def test_search_catalog_returns_official_columns(tmp_path, monkeypatch):
     _catalog(tmp_path, monkeypatch)
     frame = metadata.search_catalog("inflacion")
-    assert list(frame.columns) == list(catalog.COLUMNS.values())
+    assert list(frame.columns) == ["Institución"] + list(catalog.COLUMNS.values())
     assert frame.iloc[0][metadata.KNOWN_CODE_COL] == "pn01250pm"
 
 
@@ -53,6 +53,7 @@ def test_series_info_uses_official_keys(tmp_path, monkeypatch):
     info = metadata.series_info("pd04638pd")
     assert info["Frecuencia"] == "Diaria"
     assert info["Código de serie"] == "PD04638PD"
+    assert info["Institución"] == "BCRP"
 
 
 def test_search_catalog_translates_spanish_filters(tmp_path, monkeypatch):

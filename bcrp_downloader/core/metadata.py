@@ -120,10 +120,17 @@ def _as_frame(rows: list[dict]) -> pd.DataFrame:
     if not rows:
         return pd.DataFrame(columns=columns)
     frame = pd.DataFrame(rows)
+    institutions = frame["institution"] if "institution" in frame else None
     frame = frame.rename(columns=_COLUMN_BY_FIELD)
     frame = frame.reindex(columns=columns, fill_value="")
     frame[KNOWN_CODE_COL] = frame[KNOWN_CODE_COL].str.lower()
     frame[KNOWN_NAME_COL] = frame[KNOWN_NAME_COL].str.lower()
+    if institutions is not None:
+        names = sources.labels()
+        frame.insert(
+            0, "Institución",
+            [names.get(value, value) for value in institutions],
+        )
     return frame
 
 
@@ -188,11 +195,13 @@ def series_info(code: str) -> dict | None:
     row = catalog.get(code)
     if row is None:
         return None
-    return {
+    info = {
         column: row[field]
         for field, column in catalog.COLUMNS.items()
         if field in row
     }
+    info["Institución"] = sources.labels().get(row.get("institution", ""), row.get("institution", ""))
+    return info
 
 
 def frequency_for(codes: list[str]) -> str:

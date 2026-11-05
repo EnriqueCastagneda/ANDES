@@ -20,6 +20,9 @@ de IA.
   `bcrp mcp`.
 - **Catálogo local SQLite + FTS5**: búsquedas en milisegundos sin cargar el CSV
   completo de 6,9 MB en cada arranque.
+- **Parámetros y detalles por institución**: formatos de periodo propios (BCRP
+  `2024-1`; MEF `2026-01`), etiquetas MEF (Rubro, Nivel de gobierno, Programa) y
+  descarga vía el adaptador de cada portal.
 - **Filtros plegables por institución**: un botón junto al selector de
   institución despliega sus filtros; por defecto quedan en «Todos» y la lista usa
   todo el espacio.

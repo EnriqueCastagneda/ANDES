@@ -98,5 +98,7 @@ requieren controles propios.
   La primera búsqueda de un término indexa en el catálogo local los conceptos
   encontrados (p. ej. «canon» → Canon Minero, Canon Forestal, Canon Pesquero…) y
   las siguientes son instantáneas. `fetch` agrega los montos mensuales del
-  recurso más reciente de Transferencias. Limitación actual: solo el recurso más
-  reciente; el histórico por año queda como siguiente iteración.
+  recurso más reciente de Transferencias y respeta el rango pedido (`2026-02` a
+  `2026-04`). Las series guardan inicio/fin mensuales reales (p. ej. `2026-01` a
+  `2026-10`). Limitación actual: solo el recurso más reciente; el histórico por
+  año queda como siguiente iteración.
