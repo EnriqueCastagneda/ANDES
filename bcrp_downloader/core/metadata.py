@@ -221,9 +221,9 @@ def catalog_count() -> int:
     return catalog.count()
 
 
-def catalog_values(field: str) -> list[str]:
+def catalog_values(field: str, institution: str | None = None) -> list[str]:
     """Valores distintos de una columna del catálogo (para filtros de la GUI)."""
-    return catalog.distinct(field)
+    return catalog.distinct(field, institution=institution)
 
 
 def catalog_institutions() -> list[tuple[str, str]]:

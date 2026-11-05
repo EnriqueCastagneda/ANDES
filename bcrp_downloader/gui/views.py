@@ -799,30 +799,42 @@ def main(page: ft.Page):
     filtro_actual_hasta = make_filter_date("Actualización hasta")
 
     def gather_filters():
-        filters = {
-            "institucion": adv_institucion.value,
-            "frecuencia": freq_state["value"],
-        }
-        try:
+        institution = (institution_dd.value or "").strip()
+        if not institution:
+            # «Todas»: solo búsqueda por palabras clave, sin filtros de fuente.
+            return {}
+        if institution == "bcrp":
+            filters = {"institucion": "bcrp", "frecuencia": freq_state["value"]}
+            try:
+                filters.update(
+                    {
+                        "area": adv_area.value,
+                        "fuente": adv_fuente.value,
+                        "categoria": adv_categoria.value,
+                        "grupo_serie": adv_grupo.value,
+                    }
+                )
+            except NameError:
+                pass
             filters.update(
                 {
-                    "area": adv_area.value,
-                    "fuente": adv_fuente.value,
-                    "categoria": adv_categoria.value,
-                    "grupo_serie": adv_grupo.value,
+                    "creacion_desde": filtro_creacion_desde.controls[0].value,
+                    "creacion_hasta": filtro_creacion_hasta.controls[0].value,
+                    "actual_desde": filtro_actual_desde.controls[0].value,
+                    "actual_hasta": filtro_actual_hasta.controls[0].value,
                 }
             )
-        except NameError:
-            pass
-        filters.update(
-            {
-                "creacion_desde": filtro_creacion_desde.controls[0].value,
-                "creacion_hasta": filtro_creacion_hasta.controls[0].value,
-                "actual_desde": filtro_actual_desde.controls[0].value,
-                "actual_hasta": filtro_actual_hasta.controls[0].value,
-            }
-        )
-        return filters
+            return filters
+        # Filtros propios de MEF (y de futuras instituciones).
+        return {
+            "institucion": institution,
+            "inicio": mef_anio.value,
+            "area": mef_sector.value,
+            "grupo_serie": mef_pliego.value,
+            "categoria": mef_rubro.value,
+            "fuente": mef_fuente.value,
+            "grupo_publicacion": mef_programa.value,
+        }
 
     # Aplica filtros de los desplegables + búsqueda de texto (SQLite FTS5)
     def apply_filters(e):
@@ -1100,16 +1112,45 @@ def main(page: ft.Page):
             },
         )
 
-    adv_institucion = make_adv_dd(
-        "Institución", "institution", options=institution_options()
+    institution_dd = ft.Dropdown(
+        label="Institución",
+        value="",
+        width=260,
+        filled=True,
+        fill_color=SURFACE_2,
+        text_size=13,
+        label_style=ft.TextStyle(size=12, color=MUTED),
+        options=[ft.dropdown.Option(key="", text="Todas")]
+        + [
+            ft.dropdown.Option(key=source_id, text=label)
+            for source_id, label in institution_options()
+        ],
+        border={
+            ft.ControlState.DEFAULT: ft.OutlineInputBorder(
+                border_radius=12, side=ft.BorderSide(1, BORDER)
+            ),
+            ft.ControlState.FOCUSED: ft.OutlineInputBorder(
+                border_radius=12, side=ft.BorderSide(1, ACCENT)
+            ),
+        },
     )
     adv_area = make_adv_dd("Área que publica", "Área que publica")
     adv_fuente = make_adv_dd("Fuente", "Fuente")
     adv_categoria = make_adv_dd("Categoría de serie", "Categoría de serie")
     adv_grupo = make_adv_dd("Grupo de serie", "Grupo de serie")
 
+    # Filtros propios del Portal de Transparencia (MEF).
+    mef_anio = make_adv_dd("Año", "inicio")
+    mef_sector = make_adv_dd("Sector", "area")
+    mef_pliego = make_adv_dd("Pliego", "group_name")
+    mef_rubro = make_adv_dd("Rubro", "category")
+    mef_fuente = make_adv_dd("Fuente de financiamiento", "source")
+    mef_programa = make_adv_dd("Programa", "pub_group")
+
     def clear_filters(e):
-        for dd in (adv_institucion, adv_area, adv_fuente, adv_categoria, adv_grupo):
+        for dd in (adv_area, adv_fuente, adv_categoria, adv_grupo):
+            dd.value = ""
+        for dd in (mef_anio, mef_sector, mef_pliego, mef_rubro, mef_fuente, mef_programa):
             dd.value = ""
         for dc in (filtro_creacion_desde, filtro_creacion_hasta, filtro_actual_desde, filtro_actual_hasta):
             dc.controls[0].value = ""
@@ -1137,7 +1178,7 @@ def main(page: ft.Page):
         notify(f"Guardado: {filepath} ({len(df)} series)", ft.Colors.GREEN)
 
     adv_grid = ft.ResponsiveRow(
-        [adv_institucion, adv_area, adv_fuente, adv_categoria, adv_grupo],
+        [adv_area, adv_fuente, adv_categoria, adv_grupo],
         spacing=10,
         run_spacing=10,
     )
@@ -1212,23 +1253,30 @@ def main(page: ft.Page):
     selection_text = ft.Text("", size=11, color=MUTED)
 
     def has_active_filters():
-        """True when search, frequency, advanced filters or dates are set."""
+        """True when search or the active institution's filters are set."""
         if (search_box.value or "").strip():
             return True
-        if freq_state["value"] != "Todos":
-            return True
-        for dropdown in (adv_area, adv_fuente, adv_categoria, adv_grupo):
-            if (dropdown.value or "").strip():
+        institution = (institution_dd.value or "").strip()
+        if not institution:
+            return False
+        if institution == "bcrp":
+            if freq_state["value"] != "Todos":
                 return True
-        for control in (
-            filtro_creacion_desde,
-            filtro_creacion_hasta,
-            filtro_actual_desde,
-            filtro_actual_hasta,
-        ):
-            if (control.controls[0].value or "").strip():
+            if any((dd.value or "").strip() for dd in (adv_area, adv_fuente, adv_categoria, adv_grupo)):
                 return True
-        return False
+            for control in (
+                filtro_creacion_desde,
+                filtro_creacion_hasta,
+                filtro_actual_desde,
+                filtro_actual_hasta,
+            ):
+                if (control.controls[0].value or "").strip():
+                    return True
+            return False
+        return any(
+            (dd.value or "").strip()
+            for dd in (mef_anio, mef_sector, mef_pliego, mef_rubro, mef_fuente, mef_programa)
+        )
 
     def update_master_state():
         active = has_active_filters()
@@ -1586,6 +1634,61 @@ def main(page: ft.Page):
         padding=ft.Padding.symmetric(horizontal=2, vertical=2),
     )
 
+    mef_grid = ft.ResponsiveRow(
+        [mef_anio, mef_sector, mef_pliego, mef_rubro, mef_fuente, mef_programa],
+        spacing=10,
+        run_spacing=10,
+    )
+    for ctrl in mef_grid.controls:
+        ctrl.col = {"xs": 12, "sm": 6}
+
+    mef_section = ft.Column(
+        [
+            ft.Text("Filtros del Portal de Transparencia (MEF)", size=11, color=MUTED),
+            mef_grid,
+            ft.Row(
+                [ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED))],
+                spacing=4,
+            ),
+        ],
+        spacing=10,
+        visible=False,
+    )
+
+    bcrp_section = ft.Column(
+        [frequency_box, filter_btn, advanced_panel],
+        spacing=10,
+        visible=False,
+    )
+
+    def on_institution_change(e):
+        institution = institution_dd.value or ""
+        bcrp_section.visible = institution == "bcrp"
+        mef_section.visible = institution == "mef"
+        if institution != "bcrp":
+            set_frequency("Todos", repaint=False)
+        advanced_panel.visible = False
+        filter_btn.style = ft.ButtonStyle(
+            color=TEXT,
+            side=ft.BorderSide(1, BORDER),
+            shape=ft.RoundedRectangleBorder(radius=10),
+        )
+        for dropdown in (adv_area, adv_fuente, adv_categoria, adv_grupo):
+            dropdown.value = ""
+        for dropdown in (mef_anio, mef_sector, mef_pliego, mef_rubro, mef_fuente, mef_programa):
+            dropdown.value = ""
+        for control in (
+            filtro_creacion_desde,
+            filtro_creacion_hasta,
+            filtro_actual_desde,
+            filtro_actual_hasta,
+        ):
+            control.controls[0].value = ""
+        apply_filters(None)
+        page.update()
+
+    institution_dd.on_select = on_institution_change
+
     is_mobile = (page.width or page.window.width or 1180) < 600
     panel_height = 520 if is_mobile else max(560, (page.height or page.window.height or 760) - 40)
     panel_padding = 12 if is_mobile else 18
@@ -1602,11 +1705,11 @@ def main(page: ft.Page):
                     ],
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
-                ft.Text("Explora y filtra el catálogo del BCRP", size=12, color=MUTED),
+                ft.Text("Explora por institución o palabra clave", size=12, color=MUTED),
                 search_box,
-                frequency_box,
-                filter_btn,
-                advanced_panel,
+                institution_dd,
+                bcrp_section,
+                mef_section,
                 ft.Row(
                     [
                         master_checkbox,
@@ -1726,7 +1829,7 @@ def main(page: ft.Page):
         total = 0
         try:
             total = catalog_count()
-            adv_institucion.options = [ft.dropdown.Option(key="", text="Todas")] + [
+            institution_dd.options = [ft.dropdown.Option(key="", text="Todas")] + [
                 ft.dropdown.Option(key=source_id, text=label)
                 for source_id, label in catalog_institutions()
             ]
@@ -1738,7 +1841,19 @@ def main(page: ft.Page):
             ):
                 dropdown.options = [ft.dropdown.Option(key="", text="Todos")] + [
                     ft.dropdown.Option(key=value, text=value)
-                    for value in catalog_values(field)
+                    for value in catalog_values(field, "bcrp")
+                ]
+            for dropdown, field in (
+                (mef_anio, "start"),
+                (mef_sector, "area"),
+                (mef_pliego, "group_name"),
+                (mef_rubro, "category"),
+                (mef_fuente, "source"),
+                (mef_programa, "pub_group"),
+            ):
+                dropdown.options = [ft.dropdown.Option(key="", text="Todos")] + [
+                    ft.dropdown.Option(key=value, text=value)
+                    for value in catalog_values(field, "mef")
                 ]
             df_metadata = search_catalog("", limit=300)
         except Exception as ex:
@@ -1750,7 +1865,7 @@ def main(page: ft.Page):
                 return
             total = len(legacy)
             df_metadata = legacy.head(300)
-            adv_institucion.options = [ft.dropdown.Option(key="", text="Todas")] + [
+            institution_dd.options = [ft.dropdown.Option(key="", text="Todas")] + [
                 ft.dropdown.Option(key=source_id, text=label)
                 for source_id, label in institution_options()
             ]
@@ -1764,6 +1879,8 @@ def main(page: ft.Page):
                 dropdown.options = [ft.dropdown.Option(key="", text="Todos")] + [
                     ft.dropdown.Option(key=value, text=value) for value in values
                 ]
+            for dropdown in (mef_anio, mef_sector, mef_pliego, mef_rubro, mef_fuente, mef_programa):
+                dropdown.options = [ft.dropdown.Option(key="", text="Todos")]
 
         metadata_state["ready"] = True
         count_text.value = f"{total:,} series"

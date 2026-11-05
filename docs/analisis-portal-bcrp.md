@@ -209,8 +209,11 @@ Integrado en la rama `feat/portal-rapido` del repo principal:
 - `core/catalog.py`, `core/fetcher.py`, `core/sources.py` (registro de
   instituciones: BCRP y MEF/Portal de Transparencia), `scripts/bench_portal.py`,
   `tests/test_fast_portal.py`.
-- Filtro `institucion` en `catalog.search()` y en la GUI; al añadir una fuente se
-  declara en `sources.py` y aparece en el desplegable «Institución».
+- Filtro `institucion` en `catalog.search()` y selector propio fuera de la caja
+  de filtros avanzados. Cada institución declara sus filtros en la GUI: BCRP
+  (frecuencia, área, fuente, categoría, grupo y fechas) y MEF (año, sector,
+  pliego, rubro, fuente de financiamiento y programa). En «Todas» solo se
+  permiten consultas por palabra clave.
 - `core/metadata.py`: `search_catalog()`, `series_info()`, `frequency_for()`,
   `catalog_frequencies()` (mismas columnas que `load_metadata`).
 - `core/api.py`: `download_many(codes, start, end, frequency=None)`.

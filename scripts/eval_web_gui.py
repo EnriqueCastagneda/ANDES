@@ -212,49 +212,90 @@ def main() -> int:
         check("catálogo indexado", any("17,167 series" in t for t in texts))
         browser.shot("01-inicio.png")
 
-        # 2. búsqueda de texto
+        # 2. modo «Todas»: solo búsqueda por palabra clave
+        texts = " ".join(browser.texts()).upper()
+        check(
+            "Todas: sin filtros de institución",
+            "DIARIA" not in texts and "FILTROS AVANZADOS" not in texts,
+        )
+
+        # 3. institución BCRP: aparecen sus filtros
+        browser.click_at({"x": 146, "y": 190})  # desplegable Institución
+        time.sleep(1.0)
+        texts = " ".join(browser.texts()).upper()
+        check("BCRP y MEF listados", "BCRP" in texts and "MEF" in texts)
+        browser.click_at({"x": 146, "y": 291})  # opción BCRP
+        time.sleep(1.8)
+        texts = " ".join(browser.texts()).upper()
+        check("BCRP muestra frecuencia", "DIARIA" in texts)
+        check("BCRP muestra filtros avanzados", "FILTROS AVANZADOS" in texts)
+        browser.shot("02-bcrp.png")
+
+        # 4. búsqueda de texto
         check("foco en buscador", browser.type_into("Buscar serie", "tipo de cambio"))
         time.sleep(1.8)
         labels = " ".join(browser.labels()).upper()
         check("búsqueda filtra", "SELECCIONAR SERIE\nPD" in labels)
 
-        # 3. filtro por frecuencia
+        # 5. filtro por frecuencia
         check("clic filtro Diaria", browser.click_semantics("Diaria"))
         time.sleep(1.8)
         labels = " ".join(browser.labels()).upper()
         check("filtro Diaria aplica", "TC INTERBANCARIO" in labels)
 
-        # 4. filtro por institución (coordenadas del panel en 1280x820)
+        # 6. filtro propio de BCRP (Área que publica)
         check("abrir filtros avanzados", browser.click_semantics("Filtros Avanzados ⚙️"))
         time.sleep(1.2)
         texts = " ".join(browser.texts()).upper()
-        check("panel de filtros visible", "RANGO DE CREACIÓN" in texts)
-        browser.shot("02-filtros.png")
-        browser.click_at({"x": 118, "y": 322})  # desplegable Institución
-        time.sleep(1.2)
-        texts = " ".join(browser.texts()).upper()
-        check("BCRP y MEF listados", "BCRP" in texts and "MEF" in texts)
-        browser.click_at({"x": 89, "y": 462})  # opción MEF
-        time.sleep(1.2)
-        browser.click_semantics("Filtros Avanzados ⚙️")  # cerrar panel
-        time.sleep(1.2)
-        texts = " ".join(browser.texts()).upper()
-        check("MEF sin series muestra vacío", "NO SE ENCONTRARON RESULTADOS" in texts)
-        browser.shot("03-mef.png")
-
-        browser.click_semantics("Filtros Avanzados ⚙️")  # reabrir panel
-        time.sleep(1.2)
-        browser.click_at({"x": 118, "y": 322})  # desplegable Institución
+        check("panel BCRP visible", "RANGO DE CREACIÓN" in texts)
+        browser.click_at({"x": 234, "y": 381})  # Área que publica
         time.sleep(1.0)
-        browser.click_at({"x": 89, "y": 422})  # opción BCRP
-        time.sleep(1.2)
-        browser.click_semantics("Filtros Avanzados ⚙️")  # cerrar panel
+        browser.click_at({"x": 234, "y": 461})  # primera área real
+        time.sleep(1.5)
+        browser.click_semantics("Filtros Avanzados ⚙️")  # cerrar panel para ver filas
         time.sleep(1.2)
         labels = " ".join(browser.labels()).upper()
-        check("BCRP devuelve series", "SELECCIONAR SERIE" in labels)
-        browser.shot("04-institucion.png")
+        texts = " ".join(browser.texts()).upper()
+        check(
+            "filtro Área se aplica",
+            "SELECCIONAR SERIE" in labels or "NO SE ENCONTRARON RESULTADOS" in texts,
+        )
+        browser.shot("03-area.png")
+        browser.click_semantics("Filtros Avanzados ⚙️")  # reabrir para limpiar
+        time.sleep(1.0)
+        browser.click_at({"x": 234, "y": 381})  # reabrir Área
+        time.sleep(0.8)
+        browser.click_at({"x": 234, "y": 421})  # «Todos»
+        time.sleep(1.0)
+        browser.click_semantics("Filtros Avanzados ⚙️")  # cerrar panel
+        time.sleep(1.0)
 
-        # 5. selección múltiple
+        # 7. institución MEF: filtros propios, sin frecuencia
+        browser.click_at({"x": 146, "y": 190})
+        time.sleep(1.0)
+        browser.click_at({"x": 146, "y": 339})  # opción MEF
+        time.sleep(1.8)
+        texts = " ".join(browser.texts()).upper()
+        labels = " ".join(browser.labels()).upper()
+        check(
+            "MEF muestra panel propio",
+            "FILTROS DEL PORTAL DE TRANSPARENCIA (MEF)" in texts,
+        )
+        check("MEF sin frecuencia BCRP", "DIARIA" not in texts)
+        check("MEF sin series muestra vacío", "NO SE ENCONTRARON RESULTADOS" in texts)
+        browser.shot("04-mef.png")
+
+        # 8. volver a BCRP para descargar
+        browser.click_at({"x": 146, "y": 190})
+        time.sleep(1.0)
+        browser.click_at({"x": 146, "y": 291})
+        time.sleep(1.6)
+        check("clic filtro Diaria (retorno)", browser.click_semantics("Diaria"))
+        time.sleep(1.6)
+        labels = " ".join(browser.labels()).upper()
+        check("BCRP devuelve series", "SELECCIONAR SERIE" in labels)
+
+        # 9. selección múltiple
         for code in ("PD04637PD", "PD04638PD", "PD04647PD"):
             browser.click_label(f"Seleccionar serie\n{code}")
             time.sleep(0.3)
@@ -263,7 +304,7 @@ def main() -> int:
             browser.wait_text("3 seleccionada(s)", timeout=5),
         )
 
-        # 6. fechas y descarga por lotes
+        # 10. fechas y descarga por lotes
         check("fecha inicio", browser.type_into("Fecha inicio", "2026-11-01"))
         check("fecha fin", browser.type_into("Fecha fin", "2026-11-05"))
         browser.shot("05-antes-descarga.png")
