@@ -19,7 +19,7 @@ from urllib.parse import urlencode
 import pandas as pd
 import requests
 
-from .. import catalog
+from .. import catalog, mef_stats
 from ..paths import DATA_DIR
 from ..portals import spec_for
 
@@ -40,6 +40,8 @@ HEADERS = {
 }
 PAGE = 10000
 CACHE_DIR = os.path.join(DATA_DIR, "mef")
+STATS_DIR = os.path.join(CACHE_DIR, "stats")
+STATS_BASE = "https://www.mef.gob.pe/contenidos/estadisticas/pol_econ/cuadro{}.xls"
 
 
 def _code(name: str) -> str:
@@ -179,6 +181,97 @@ class MefAdapter:
         )
         return frame.groupby("_key")["_monto"].sum().to_dict()
 
+    def _stats_file(self, index: int) -> str:
+        os.makedirs(STATS_DIR, exist_ok=True)
+        path = os.path.join(STATS_DIR, f"cuadro{index}.xls")
+        if os.path.exists(path) and time.time() - os.path.getmtime(path) < 30 * 86400:
+            return path
+        url = STATS_BASE.format(index)
+        response = requests.get(url, headers=HEADERS, timeout=120)
+        response.raise_for_status()
+        with open(path, "wb") as handle:
+            handle.write(response.content)
+        return path
+
+    def _ensure_stats(self) -> int:
+        """Indexa una sola vez los cuadros estadísticos del MEF (1..61)."""
+        if catalog.count_prefix("MEF-EST", "mef") > 0:
+            return 0
+        rows: list[dict] = []
+        for index in range(1, 62):
+            try:
+                path = self._stats_file(index)
+                url = STATS_BASE.format(index)
+                title = mef_stats.title_of(path, index)
+                for series in mef_stats.extract(path, url, title):
+                    points = series["points"]
+                    start = min(point[0] for point in points)
+                    end = max(point[0] for point in points)
+                    signature = json.dumps(
+                        series["selector"], sort_keys=True
+                    ) + f"|{series['label']}"
+                    code = "MEF-EST-" + hashlib.sha1(
+                        f"{url}|{signature}".encode()
+                    ).hexdigest()[:10].upper()
+                    rows.append(
+                        {
+                            "institution": "mef",
+                            "code": code,
+                            "category": series["category"],
+                            "group_name": "Estadísticas MEF",
+                            "name": f"{title} - {series['label']}",
+                            "description": title,
+                            "unit": "",
+                            "source": "MEF",
+                            "frequency": series["frequency"],
+                            "pub_group": series["category"],
+                            "area": "Estadísticas",
+                            "start": start,
+                            "end": end,
+                            "memo": json.dumps(
+                                {
+                                    "kind": "stats",
+                                    "url": url,
+                                    "selector": series["selector"],
+                                },
+                                ensure_ascii=False,
+                            ),
+                        }
+                    )
+            except Exception:
+                continue
+        return catalog.upsert(rows)
+
+    def _stats_fetch(self, code: str, row: dict, start: str, end: str) -> pd.DataFrame:
+        try:
+            memo = json.loads(row["memo"])
+        except (TypeError, ValueError):
+            return pd.DataFrame(columns=["fecha"])
+        url = memo.get("url", "")
+        selector = memo.get("selector", {})
+        match = re.search(r"cuadro(\d+)\.xls", url)
+        if not match:
+            return pd.DataFrame(columns=["fecha"])
+        path = self._stats_file(int(match.group(1)))
+        low, high = _bounds(start, end)
+        for series in mef_stats.extract(path, url, row.get("description", "")):
+            if series["selector"] != selector:
+                continue
+            points = [
+                (period, value)
+                for period, value in series["points"]
+                if low[:7] <= period[:7] <= high[:7]
+            ]
+            if not points:
+                continue
+            return pd.DataFrame(
+                {
+                    "fecha": [point[0] for point in points],
+                    code.upper(): [point[1] for point in points],
+                }
+            )
+        return pd.DataFrame(columns=["fecha"])
+
     def _ingest(self, query: str) -> int:
         resource_id = self._resource_id()
         records, _ = self._records(resource_id, q=query, limit=2000)
@@ -268,6 +361,11 @@ class MefAdapter:
             try:
                 meta = json.loads(row["memo"])
             except ValueError:
+                continue
+            if meta.get("kind") == "stats":
+                stats = self._stats_fetch(code, row, start, end)
+                if not stats.empty:
+                    frames.append(stats)
                 continue
             recurso = meta.get("recurso")
             if not recurso:

@@ -93,8 +93,11 @@ requieren controles propios.
 ## Estado actual
 
 - **BCRP**: catálogo SQLite+FTS5, lotes de 10, adaptador nativo.
-- **MEF**: jerarquía declarada (Año 1999–2026, Nivel de gobierno, Rubro, Fuente,
-  Programa) y datos vía API pública `datastore_search` de Datos Abiertos.
+- **MEF**: dos colecciones nativas. Transferencias (mensual, 2010–2026, API
+  `datastore_search`/`dump`) y Cuadros estadísticos (61 archivos `.xls` de la
+  página de Estadísticas, normalizados a ~1 030 series anuales/trimestrales con
+  caché local). Jerarquía declarada: Año 1999–2026, Nivel de gobierno, Rubro,
+  Fuente y Programa.
   La primera búsqueda de un término indexa en el catálogo local los conceptos
   encontrados (p. ej. «canon» → Canon Minero, Canon Forestal, Canon Pesquero…) y
   las siguientes son instantáneas. `fetch` agrega los montos mensuales del

@@ -303,6 +303,36 @@ def main() -> int:
         browser.click_at({"x": 700, "y": 450})  # cerrar menú
         time.sleep(0.8)
 
+        # 7b2. cuadros estadísticos del MEF indexados y buscables
+        browser.click_at({"x": 190, "y": 130})
+        time.sleep(0.4)
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "rawKeyDown", "key": "a", "code": "KeyA",
+            "windowsVirtualKeyCode": 65, "modifiers": 2,
+        })
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "keyUp", "key": "a", "code": "KeyA",
+            "windowsVirtualKeyCode": 65, "modifiers": 2,
+        })
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "rawKeyDown", "key": "Backspace",
+            "windowsVirtualKeyCode": 8,
+        })
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "keyUp", "key": "Backspace", "windowsVirtualKeyCode": 8,
+        })
+        browser.cmd("Input.insertText", {"text": "pbi"})
+        time.sleep(0.5)
+        labels = ""
+        deadline = time.time() + 40
+        while time.time() < deadline:
+            labels = " ".join(browser.labels()).upper()
+            if "MEF-EST-" in labels:
+                break
+            time.sleep(1)
+        check("MEF estadísticas indexadas", "MEF-EST-" in labels)
+        browser.shot("06b-mef-estadisticas.png")
+
         # 7c. búsqueda nativa en MEF: indexa y encuentra «canon»
         browser.click_at({"x": 190, "y": 130})
         time.sleep(0.4)

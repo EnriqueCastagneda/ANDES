@@ -54,6 +54,24 @@ def _dataframe_to_html(df, code, start, end):
     )
 
 
+def _dataframe_to_xls(df, filepath):
+    """Escribe un .xls binario real (BIFF) sin depender de Excel."""
+    import xlwt
+
+    workbook = xlwt.Workbook()
+    sheet = workbook.add_sheet("serie")
+    for column, name in enumerate(df.columns):
+        sheet.write(0, column, str(name))
+    for row_index, (_, row) in enumerate(df.iterrows(), start=1):
+        for column, name in enumerate(df.columns):
+            value = row[name]
+            if isinstance(value, (int, float)) and value == value:
+                sheet.write(row_index, column, float(value))
+            else:
+                sheet.write(row_index, column, str(value))
+    workbook.save(filepath)
+
+
 def export_series(df, code, start, end, fmt, out_dir=None):
     """Write a series DataFrame to disk in the requested format.
 
@@ -62,9 +80,7 @@ def export_series(df, code, start, end, fmt, out_dir=None):
     if out_dir is None:
         out_dir = OUTPUT_DIR
     fmt = fmt.lower()
-    if fmt == "xls":
-        raise ValueError("xls handled via native endpoint")
-    if fmt not in ("csv", "json", "txt", "xml", "html"):
+    if fmt not in ("csv", "json", "txt", "xml", "html", "xls"):
         raise ValueError(f"Formato no soportado: {fmt}")
 
     safe_code = re.sub(r"[^\w\-_.]", "_", code.upper())
@@ -84,6 +100,8 @@ def export_series(df, code, start, end, fmt, out_dir=None):
     elif fmt == "html":
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(_dataframe_to_html(df, code, start, end))
+    elif fmt == "xls":
+        _dataframe_to_xls(df, filepath)
     return filepath
 
 

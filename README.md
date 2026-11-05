@@ -37,7 +37,9 @@ de IA.
   rate-limit y reintentos con backoff para no activar el WAF del portal.
 - **Servidor MCP** (stdio) con herramientas `search_series`, `get_metadata` y
   `download_series`.
-- **Exportación** a CSV, JSON, XLS, XML, TXT y HTML.
+- **Exportación** a CSV, JSON, XLS, XML, TXT y HTML (XLS binario real).
+- **Estadísticas MEF**: 61 cuadros `.xls` convertidos a series anuales y
+  trimestrales, además de las transferencias mensuales.
 - **Detección de documentación PDF** en las descripciones de las series.
 - **Caché local** de metadatos y suites de pruebas con mocks.
 

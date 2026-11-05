@@ -373,3 +373,19 @@ def upsert(rows: Iterable[dict], db_path: str | None = None) -> int:
         return len(rows)
     finally:
         conn.close()
+
+
+def count_prefix(prefix: str, institution: str | None = None,
+                 db_path: str | None = None) -> int:
+    """Cuenta series cuyo código empieza por ``prefix``."""
+    db_path = db_path or ensure_catalog()
+    conn = sqlite3.connect(db_path)
+    try:
+        sql = "SELECT COUNT(*) FROM series WHERE code LIKE ?"
+        params: list = [f"{prefix.upper()}%"]
+        if institution:
+            sql += " AND institution = ?"
+            params.append(institution)
+        return int(conn.execute(sql, params).fetchone()[0])
+    finally:
+        conn.close()
