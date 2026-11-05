@@ -68,6 +68,21 @@ class FakePage:
             self.dialogs.pop()
 
 
+def _controls(control, seen=None):
+    seen = seen or set()
+    if id(control) in seen:
+        return
+    seen.add(id(control))
+    yield control
+    content = getattr(control, "content", None)
+    if content is not None:
+        yield from _controls(content, seen)
+    children = getattr(control, "controls", None)
+    if isinstance(children, list):
+        for child in children:
+            yield from _controls(child, seen)
+
+
 def _texts(control, seen=None):
     seen = seen or set()
     if id(control) in seen:
@@ -104,3 +119,32 @@ def test_gui_builds_list_from_catalog(tmp_path, monkeypatch):
     assert any("PD04638PD" in text for text in texts)
     assert any("INFLACIÓN USA" in text for text in texts)
     assert any("Institución" in text for text in texts)
+
+
+def test_institution_selector_outside_filters(tmp_path, monkeypatch):
+    csv_path = tmp_path / "meta.csv"
+    csv_path.write_text(CSV, encoding="latin-1")
+    monkeypatch.setattr(catalog, "METADATA_PATH", str(csv_path))
+    monkeypatch.setattr(catalog, "CATALOG_PATH", str(tmp_path / "catalog.sqlite3"))
+
+    page = FakePage()
+    views.main(page)
+
+    dropdowns = [
+        control
+        for control in _controls(page.controls[0])
+        if type(control).__name__ == "Dropdown"
+        and getattr(control, "label", None) == "Institución"
+    ]
+    assert len(dropdowns) == 1
+    selector = dropdowns[0]
+    assert selector.value == ""
+    assert {"BCRP", "MEF"} <= {option.text for option in selector.options}
+
+    # Por defecto («Todas») los filtros de institución están ocultos.
+    hidden = [
+        control
+        for control in _controls(page.controls[0])
+        if type(control).__name__ == "Column" and not control.visible
+    ]
+    assert hidden

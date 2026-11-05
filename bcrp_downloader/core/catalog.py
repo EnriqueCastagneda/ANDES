@@ -286,10 +286,14 @@ _DISTINCT_FIELDS = {
     "pub_group": "pub_group",
     "group_name": "group_name",
     "frequency": "frequency",
+    "start": "start",
+    "end": "end",
 }
 
 
-def distinct(field: str, limit: int = 10000, db_path: str | None = None) -> list[str]:
+def distinct(field: str, limit: int = 10000, *,
+             institution: str | None = None,
+             db_path: str | None = None) -> list[str]:
     """Valores distintos de una columna, ordenados (para desplegables de la GUI)."""
     try:
         column = _DISTINCT_FIELDS[field]
@@ -298,13 +302,17 @@ def distinct(field: str, limit: int = 10000, db_path: str | None = None) -> list
     db_path = db_path or ensure_catalog()
     conn = sqlite3.connect(db_path)
     try:
-        rows = conn.execute(
+        sql = (
             f"SELECT DISTINCT {column} FROM series"
             f" WHERE {column} IS NOT NULL AND {column} != ''"
-            f" ORDER BY {column} LIMIT ?",
-            (limit,),
         )
-        return [r[0] for r in rows]
+        params: list = []
+        if institution:
+            sql += " AND institution = ?"
+            params.append(institution)
+        sql += f" ORDER BY {column} LIMIT ?"
+        params.append(limit)
+        return [r[0] for r in conn.execute(sql, params)]
     finally:
         conn.close()
 
