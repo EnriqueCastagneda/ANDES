@@ -9,13 +9,18 @@ locales.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import os
 import re
+import time
+from urllib.parse import urlencode
 
 import pandas as pd
 import requests
 
 from .. import catalog
+from ..paths import DATA_DIR
 from ..portals import spec_for
 
 DATASTORE = "https://api.datosabiertos.mef.gob.pe/DatosAbiertos/v1/datastore_search"
@@ -23,6 +28,7 @@ DETAIL = (
     "https://datosabiertos.mef.gob.pe/Rest/PortalWebRecursoDetalle/v1.0/"
     "getRecursoDetalle"
 )
+DUMP = "https://api.datosabiertos.mef.gob.pe/DatosAbiertos/v1/dump"
 DATASET = "transferencias-de-fondos-y-asignaciones-financieras"
 BOOTSTRAP_RESOURCE = "fab56aea-30af-4b41-9eda-b968b87c7171"  # 2022
 HEADERS = {
@@ -33,6 +39,7 @@ HEADERS = {
     "Accept": "application/json",
 }
 PAGE = 10000
+CACHE_DIR = os.path.join(DATA_DIR, "mef")
 
 
 def _code(name: str) -> str:
@@ -63,11 +70,12 @@ def _bounds(start: str, end: str) -> tuple[str, str]:
 class MefAdapter:
     spec = spec_for("mef")
     _resource: str | None = None
+    _resources: dict[str, str] | None = None
 
-    def _resource_id(self) -> str:
-        """Id del recurso más reciente de Transferencias."""
-        if MefAdapter._resource:
-            return MefAdapter._resource
+    def _resource_map(self) -> dict[str, str]:
+        """Mapa año -> id de recurso de Transferencias."""
+        if MefAdapter._resources:
+            return MefAdapter._resources
         response = requests.post(
             DETAIL,
             json={"dataset": DATASET, "id_recurso": BOOTSTRAP_RESOURCE},
@@ -75,17 +83,25 @@ class MefAdapter:
             timeout=60,
         )
         response.raise_for_status()
-        resources = response.json().get("resources", [])
-        best_id, best_year = BOOTSTRAP_RESOURCE, ""
-        for resource in resources:
-            name = resource.get("resource_name", "")
-            year = _year(name)
-            url = resource.get("resource_url", "")
-            found = re.search(r"/resource/([a-f0-9-]{36})", url)
-            if year and found and year > best_year:
-                best_year, best_id = year, found.group(1)
-        MefAdapter._resource = best_id
-        return best_id
+        mapping: dict[str, str] = {}
+        for resource in response.json().get("resources", []):
+            year = _year(resource.get("resource_name", ""))
+            found = re.search(
+                r"/resource/([a-f0-9-]{36})", resource.get("resource_url", "")
+            )
+            if year and found:
+                mapping[year] = found.group(1)
+        mapping.setdefault("2022", BOOTSTRAP_RESOURCE)
+        MefAdapter._resources = mapping
+        return mapping
+
+    def _resource_id(self) -> str:
+        """Id del recurso más reciente de Transferencias."""
+        if MefAdapter._resource:
+            return MefAdapter._resource
+        mapping = self._resource_map()
+        MefAdapter._resource = mapping[max(mapping)]
+        return MefAdapter._resource
 
     def _records(self, resource_id: str, *, q: str | None = None,
                  filters: dict | None = None, limit: int = PAGE,
@@ -105,6 +121,63 @@ class MefAdapter:
         records = payload.get("records") or []
         total = int(payload.get("result", {}).get("include_total") or len(records))
         return records, total
+
+    def _dump(self, resource_id: str, recurso: str, year: str = "") -> str:
+        """CSV filtrado del MEF, con caché local y sondeo corto."""
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        digest = hashlib.sha1(
+            f"{resource_id}|{recurso}".encode()
+        ).hexdigest()[:16]
+        cache_path = os.path.join(CACHE_DIR, f"{digest}.csv")
+        ttl = 86400 if year == str(time.localtime().tm_year) else 30 * 86400
+        if os.path.exists(cache_path) and time.time() - os.path.getmtime(
+            cache_path
+        ) < ttl:
+            with open(cache_path, encoding="utf-8-sig") as handle:
+                return handle.read()
+
+        query = urlencode(
+            {
+                "id": resource_id,
+                "filters": json.dumps(
+                    {"RECURSO_NOMBRE": recurso}, ensure_ascii=False
+                ),
+            }
+        )
+        url = f"{DUMP}?{query}"
+        for _ in range(20):
+            response = requests.get(url, headers=HEADERS, timeout=180)
+            response.raise_for_status()
+            text = response.text.lstrip("\ufeff").lstrip()
+            if text.startswith('"ANO_PRC"') or text.startswith("ANO_PRC"):
+                with open(cache_path, "w", encoding="utf-8") as handle:
+                    handle.write(text)
+                return text
+            time.sleep(1.5)
+        raise RuntimeError("MEF no devolvió el CSV filtrado")
+
+    def _monthly_totals(
+        self, resource_id: str, recurso: str, year: str = ""
+    ) -> dict[str, float]:
+        text = self._dump(resource_id, recurso, year)
+        frame = pd.read_csv(io.StringIO(text))
+        if "MONTO_AUTORIZADO" not in frame.columns:
+            return {}
+        amounts = pd.to_numeric(
+            frame["MONTO_AUTORIZADO"].astype(str).str.replace(",", "", regex=False),
+            errors="coerce",
+        ).fillna(0.0)
+        frame = frame.assign(_monto=amounts)
+        frame = frame[
+            frame["ANO_PRC"].notna() & frame["MES_PRC"].notna()
+        ].copy()
+        frame["_key"] = (
+            frame["ANO_PRC"].astype(int).map("{:04d}".format)
+            + "-"
+            + frame["MES_PRC"].astype(int).map("{:02d}".format)
+            + "-01"
+        )
+        return frame.groupby("_key")["_monto"].sum().to_dict()
 
     def _ingest(self, query: str) -> int:
         resource_id = self._resource_id()
@@ -196,39 +269,21 @@ class MefAdapter:
                 meta = json.loads(row["memo"])
             except ValueError:
                 continue
-            resource_id = meta.get("resource_id")
             recurso = meta.get("recurso")
-            if not resource_id or not recurso:
+            if not recurso:
                 continue
-
-            collected: list[dict] = []
-            offset = 0
-            while True:
-                records, total = self._records(
-                    resource_id,
-                    filters={"RECURSO_NOMBRE": recurso},
-                    limit=PAGE,
-                    offset=offset,
-                )
-                collected.extend(records)
-                offset += len(records)
-                if not records or offset >= total:
-                    break
-
+            low, high = _bounds(start, end)
+            mapping = self._resource_map()
             totals: dict[str, float] = {}
-            for record in collected:
-                year = (record.get("ANO_PRC") or "").strip()
-                month = (record.get("MES_PRC") or "").strip()
-                amount = record.get("MONTO_AUTORIZADO") or record.get("MONTO_ACREDITADO")
-                if not year or not month or amount in (None, ""):
+            for year in range(int(low[:4]), int(high[:4]) + 1):
+                resource_id = mapping.get(str(year))
+                if not resource_id:
                     continue
-                key = f"{int(year):04d}-{int(month):02d}-01"
-                try:
-                    totals[key] = totals.get(key, 0.0) + float(amount)
-                except (TypeError, ValueError):
-                    continue
+                totals.update(
+                    self._monthly_totals(resource_id, recurso, str(year))
+                )
+
             if totals:
-                low, high = _bounds(start, end)
                 ordered = [
                     key for key in sorted(totals)
                     if low[:7] <= key[:7] <= high[:7]

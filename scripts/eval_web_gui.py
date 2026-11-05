@@ -363,10 +363,10 @@ def main() -> int:
             "detalles MEF con etiquetas propias",
             "RUBRO" in texts and "NIVEL DE GOBIERNO" in texts,
         )
-        check("fecha MEF inicio", browser.type_into("Fecha inicio", "2026-02"))
-        check("fecha MEF fin", browser.type_into("Fecha fin", "2026-04"))
+        check("fecha MEF inicio", browser.type_into("Fecha inicio", "2010-01-01"))
+        check("fecha MEF fin", browser.type_into("Fecha fin", "2026-10-01"))
         check("descargar MEF", browser.click_semantics("Descargar"))
-        deadline = time.time() + 40
+        deadline = time.time() + 120
         mef_files: list[str] = []
         while time.time() < deadline:
             mef_files = [
@@ -377,6 +377,9 @@ def main() -> int:
                 break
             time.sleep(1)
         check("archivo MEF generado", bool(mef_files), ", ".join(mef_files))
+        if mef_files:
+            rows = (outputs / mef_files[0]).read_text(encoding="utf-8-sig").splitlines()
+            check("MEF histórico completo", len(rows) > 150, f"{len(rows)} filas")
         browser.shot("08-mef-descarga.png")
         browser.click_at({"x": 190, "y": 130})
         time.sleep(0.4)
