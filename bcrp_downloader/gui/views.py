@@ -26,7 +26,9 @@ from ..core.metadata import (
     KNOWN_CODE_COL,
     KNOWN_NAME_COL,
     catalog_count,
+    catalog_institutions,
     catalog_values,
+    institution_options,
     load_metadata,
     search_catalog,
     series_info,
@@ -542,7 +544,8 @@ def main(page: ft.Page):
     def make_date_control(hint):
         field = ft.TextField(
             hint_text=hint,
-            read_only=True,
+            read_only=False,
+            tooltip="Escribe el periodo (2024-1) o usa el calendario",
             text_size=13,
             width=110,
             filled=True,
@@ -796,7 +799,10 @@ def main(page: ft.Page):
     filtro_actual_hasta = make_filter_date("Actualización hasta")
 
     def gather_filters():
-        filters = {"frecuencia": freq_state["value"]}
+        filters = {
+            "institucion": adv_institucion.value,
+            "frecuencia": freq_state["value"],
+        }
         try:
             filters.update(
                 {
@@ -1064,13 +1070,15 @@ def main(page: ft.Page):
     )
 
     # --- Filtros avanzados colapsables ---
-    def make_adv_dd(label, column):
+    def make_adv_dd(label, column, options=None):
         # The catalogue may still be loading when the UI is built.
-        values = (
-            sorted(df_metadata[column].dropna().astype(str).unique())
-            if column in df_metadata.columns
-            else []
-        )
+        if options is None:
+            values = (
+                sorted(df_metadata[column].dropna().astype(str).unique())
+                if column in df_metadata.columns
+                else []
+            )
+            options = [(value, value) for value in values]
         return ft.Dropdown(
             label=label,
             value="",
@@ -1079,8 +1087,8 @@ def main(page: ft.Page):
             fill_color=SURFACE,
             text_size=12,
             label_style=ft.TextStyle(size=11, color=MUTED),
-            options=[ft.dropdown.Option(key="", text="Todos")]
-            + [ft.dropdown.Option(key=v, text=v) for v in values],
+            options=[ft.dropdown.Option(key="", text="Todas")]
+            + [ft.dropdown.Option(key=key, text=text) for key, text in options],
             on_select=lambda e: apply_filters(None),
             border={
                 ft.ControlState.DEFAULT: ft.OutlineInputBorder(
@@ -1092,13 +1100,16 @@ def main(page: ft.Page):
             },
         )
 
+    adv_institucion = make_adv_dd(
+        "Institución", "institution", options=institution_options()
+    )
     adv_area = make_adv_dd("Área que publica", "Área que publica")
     adv_fuente = make_adv_dd("Fuente", "Fuente")
     adv_categoria = make_adv_dd("Categoría de serie", "Categoría de serie")
     adv_grupo = make_adv_dd("Grupo de serie", "Grupo de serie")
 
     def clear_filters(e):
-        for dd in (adv_area, adv_fuente, adv_categoria, adv_grupo):
+        for dd in (adv_institucion, adv_area, adv_fuente, adv_categoria, adv_grupo):
             dd.value = ""
         for dc in (filtro_creacion_desde, filtro_creacion_hasta, filtro_actual_desde, filtro_actual_hasta):
             dc.controls[0].value = ""
@@ -1126,7 +1137,7 @@ def main(page: ft.Page):
         notify(f"Guardado: {filepath} ({len(df)} series)", ft.Colors.GREEN)
 
     adv_grid = ft.ResponsiveRow(
-        [adv_area, adv_fuente, adv_categoria, adv_grupo],
+        [adv_institucion, adv_area, adv_fuente, adv_categoria, adv_grupo],
         spacing=10,
         run_spacing=10,
     )
@@ -1715,6 +1726,10 @@ def main(page: ft.Page):
         total = 0
         try:
             total = catalog_count()
+            adv_institucion.options = [ft.dropdown.Option(key="", text="Todas")] + [
+                ft.dropdown.Option(key=source_id, text=label)
+                for source_id, label in catalog_institutions()
+            ]
             for dropdown, field in (
                 (adv_area, "area"),
                 (adv_fuente, "source"),
@@ -1735,6 +1750,10 @@ def main(page: ft.Page):
                 return
             total = len(legacy)
             df_metadata = legacy.head(300)
+            adv_institucion.options = [ft.dropdown.Option(key="", text="Todas")] + [
+                ft.dropdown.Option(key=source_id, text=label)
+                for source_id, label in institution_options()
+            ]
             for dropdown, column in (
                 (adv_area, "Área que publica"),
                 (adv_fuente, "Fuente"),
