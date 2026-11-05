@@ -87,6 +87,9 @@ requieren controles propios.
 
 - **BCRP**: catálogo SQLite+FTS5, lotes de 10, adaptador nativo.
 - **MEF**: jerarquía declarada (Año 1999–2026, Nivel de gobierno, Rubro, Fuente,
-  Programa) y descubrimiento local en `fixtures/mef/discovered.json`
-  (`DrpYear`, `DrpActProy`, `Navegar_7.aspx`). Falta el endpoint de datos; el
-  adaptador devuelve vacío y `fetch` falla de forma explícita.
+  Programa) y datos vía API pública `datastore_search` de Datos Abiertos.
+  La primera búsqueda de un término indexa en el catálogo local los conceptos
+  encontrados (p. ej. «canon» → Canon Minero, Canon Forestal, Canon Pesquero…) y
+  las siguientes son instantáneas. `fetch` agrega los montos mensuales del
+  recurso más reciente de Transferencias. Limitación actual: solo el recurso más
+  reciente; el histórico por año queda como siguiente iteración.

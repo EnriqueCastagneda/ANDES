@@ -339,3 +339,37 @@ def get(code: str, db_path: str | None = None) -> dict | None:
         return dict(row) if row else None
     finally:
         conn.close()
+
+
+_UPSERT_COLUMNS = (
+    "institution", "code", "category", "group_name", "name", "description",
+    "methodology", "unit", "scale", "geo", "source", "frequency", "created",
+    "pub_group", "area", "updated", "start", "end", "memo",
+)
+
+
+def upsert(rows: Iterable[dict], db_path: str | None = None) -> int:
+    """Inserta o actualiza series y reconstruye el índice FTS5.
+
+    Se usa para catálogos que crecen bajo demanda (p. ej. MEF). Devuelve el
+    número de filas escritas.
+    """
+    rows = list(rows)
+    if not rows:
+        return 0
+    db_path = db_path or ensure_catalog()
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.executemany(
+            "INSERT OR REPLACE INTO series ("
+            + ", ".join(_UPSERT_COLUMNS)
+            + ") VALUES ("
+            + ",".join("?" * len(_UPSERT_COLUMNS))
+            + ")",
+            [tuple(row.get(column, "") for column in _UPSERT_COLUMNS) for row in rows],
+        )
+        conn.execute("INSERT INTO series_fts(series_fts) VALUES('rebuild')")
+        conn.commit()
+        return len(rows)
+    finally:
+        conn.close()

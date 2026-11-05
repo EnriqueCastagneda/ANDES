@@ -13,8 +13,10 @@ class BcrpAdapter:
 
     def search(self, query: str, *, filters: dict | None = None,
                limit: int | None = 100, offset: int = 0) -> pd.DataFrame:
+        scoped = dict(filters or {})
+        scoped["institucion"] = "bcrp"
         return metadata.search_catalog(
-            query, filters=filters, limit=limit, offset=offset
+            query, filters=scoped, limit=limit, offset=offset
         )
 
     def fetch(self, codes: list[str], start: str, end: str,
