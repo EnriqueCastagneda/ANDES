@@ -207,7 +207,8 @@ bcrp-integracion/
 Integrado en la rama `feat/portal-rapido` del repo principal:
 
 - `core/catalog.py`, `core/fetcher.py`, `core/sources.py` (registro de
-  instituciones de origen), `scripts/bench_portal.py`, `tests/test_fast_portal.py`.
+  instituciones: BCRP y MEF/Portal de Transparencia), `scripts/bench_portal.py`,
+  `tests/test_fast_portal.py`.
 - Filtro `institucion` en `catalog.search()` y en la GUI; al añadir una fuente se
   declara en `sources.py` y aparece en el desplegable «Institución».
 - `core/metadata.py`: `search_catalog()`, `series_info()`, `frequency_for()`,
