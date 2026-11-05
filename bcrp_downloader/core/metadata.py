@@ -112,12 +112,11 @@ def filter_metadata(df, filters):
 _COLUMN_BY_FIELD = {
     field: column for field, column in catalog.COLUMNS.items()
 }
-_FIELDS_BY_COLUMN = {column: field for field, column in _COLUMN_BY_FIELD.items()}
 
 
 def _as_frame(rows: list[dict]) -> pd.DataFrame:
     """Convierte filas del catálogo al DataFrame con columnas del CSV oficial."""
-    columns = list(_FIELDS_BY_COLUMN)
+    columns = list(_COLUMN_BY_FIELD.values())
     if not rows:
         return pd.DataFrame(columns=columns)
     frame = pd.DataFrame(rows)
@@ -128,23 +127,58 @@ def _as_frame(rows: list[dict]) -> pd.DataFrame:
     return frame
 
 
+_FILTER_KEYS = {
+    "frecuencia": "frequency",
+    "categoria": "category",
+    "area": "area",
+    "fuente": "source",
+    "grupo_serie": "group_name",
+    "grupo_publicacion": "pub_group",
+    "inicio": "start",
+    "fin": "end",
+    "creacion_desde": "created_from",
+    "creacion_hasta": "created_to",
+    "actual_desde": "updated_from",
+    "actual_hasta": "updated_to",
+}
+
+_CATALOG_FILTERS = {
+    "frequency", "category", "area", "source", "pub_group", "group_name",
+    "start", "end", "created_from", "created_to", "updated_from", "updated_to",
+}
+
+
 def search_catalog(
     query: str = "",
     *,
-    frequency: str | None = None,
-    category: str | None = None,
-    limit: int = 100,
+    limit: int | None = 100,
     offset: int = 0,
+    filters: dict | None = None,
+    **kwargs,
 ) -> pd.DataFrame:
     """Busca en el catálogo local (FTS5) sin descargar el CSV completo.
 
+    Acepta los mismos filtros que ``filter_metadata`` usando las claves en
+    español (``frecuencia``, ``categoria``, ``area``, ``fuente``,
+    ``grupo_serie``, ``grupo_publicacion``, ``creacion_desde/hasta``,
+    ``actual_desde/hasta``, ``inicio``, ``fin``) o los nombres del catálogo.
+
     Devuelve un DataFrame con las mismas columnas que ``load_metadata``.
-    La primera búsqueda indexa el catálogo; las siguientes responden en
-    milisegundos.
     """
-    rows = catalog.search(
-        query, frequency=frequency, category=category, limit=limit, offset=offset
-    )
+    options = dict(filters or {})
+    options.update(kwargs)
+    translated = {}
+    for key, value in options.items():
+        if value in (None, "", "Todas", "Todos"):
+            continue
+        translated[_FILTER_KEYS.get(key, key)] = value
+    translated = {
+        key: value
+        for key, value in translated.items()
+        if key in _CATALOG_FILTERS
+    }
+
+    rows = catalog.search(query, limit=limit, offset=offset, **translated)
     return _as_frame(rows)
 
 
@@ -153,8 +187,11 @@ def series_info(code: str) -> dict | None:
     row = catalog.get(code)
     if row is None:
         return None
-    info = {_FIELDS_BY_COLUMN[key]: row[key] for key in _FIELDS_BY_COLUMN if key in row}
-    return info
+    return {
+        column: row[field]
+        for field, column in catalog.COLUMNS.items()
+        if field in row
+    }
 
 
 def frequency_for(codes: list[str]) -> str:
@@ -176,5 +213,15 @@ def frequency_for(codes: list[str]) -> str:
 def catalog_frequencies() -> list[tuple[str, int]]:
     """Frecuencias disponibles y su número de series."""
     return catalog.frequencies()
+
+
+def catalog_count() -> int:
+    """Número total de series indexadas."""
+    return catalog.count()
+
+
+def catalog_values(field: str) -> list[str]:
+    """Valores distintos de una columna del catálogo (para filtros de la GUI)."""
+    return catalog.distinct(field)
 
 

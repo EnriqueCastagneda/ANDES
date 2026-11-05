@@ -137,7 +137,7 @@ Dos módulos nuevos en `bcrp_downloader/core/`, sin dependencias nuevas:
 | `core/metadata.py` | `load_metadata()` deja de cargar 6,9 MB con pandas en cada arranque; `search`/`filter_metadata` pasan a `catalog.search(...)`. Mantener `load_metadata()` como compatibilidad (descarga perezosa). |
 | `core/api.py` | `download_series_data()` delega en `fetcher.fetch_series([code], ...)`; añadir `download_many(codes, ...)` para lotes. |
 | `core/http.py` | Reutilizar `_is_block`; el nuevo cliente ya incorpora detección y backoff (no borrar el módulo: lo usan tests y descargas XLS). |
-| `gui/views.py` | Búsqueda contra el catálogo local con debounce 250 ms; descarga en hilo; barra de progreso por lotes. |
+| `gui/views.py` | Implementado: búsqueda y filtros vía `search_catalog()`, descarga por lotes con `download_many()` agrupada por frecuencia, progreso por lote y respaldo serie por serie. |
 | `cli/main.py` | Nuevo `bcrp download-many --codes ... --frequency Mensual` y `bcrp catalog refresh`. |
 | `mcp/server.py` | `search_series` usa FTS5; `download_series` acepta lista de códigos. |
 
@@ -213,5 +213,6 @@ Integrado en la rama `feat/portal-rapido` del repo principal:
 - `core/api.py`: `download_many(codes, start, end, frequency=None)`.
 - `cli/main.py`: comando `bcrp download-many`.
 - `tests/test_fast_integration.py`: adaptadores y CLI.
+- `tests/test_gui_catalog.py`: prueba de humo de la GUI con `Page` falso.
 
 No requiere cambios en `pyproject.toml`.

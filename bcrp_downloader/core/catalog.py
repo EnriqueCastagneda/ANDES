@@ -156,34 +156,123 @@ def _fts_query(text: str) -> str:
     return " ".join(f'"{t}"*' for t in tokens)
 
 
-def search(query: str = "", *, frequency: str | None = None,
-           category: str | None = None, limit: int = 50,
-           offset: int = 0, db_path: str | None = None) -> list[dict]:
-    """Busca series por texto (prefijos, sin distinguir tildes) y filtros exactos."""
+def search(
+    query: str = "",
+    *,
+    frequency: str | None = None,
+    category: str | None = None,
+    area: str | None = None,
+    source: str | None = None,
+    pub_group: str | None = None,
+    group_name: str | None = None,
+    start: str | None = None,
+    end: str | None = None,
+    created_from: str | None = None,
+    created_to: str | None = None,
+    updated_from: str | None = None,
+    updated_to: str | None = None,
+    limit: int | None = 50,
+    offset: int = 0,
+    db_path: str | None = None,
+) -> list[dict]:
+    """Busca series por texto (prefijos, sin tildes) y filtros exactos o de rango.
+
+    Reproduce los filtros del CSV oficial directamente en SQL, sin cargar el
+    catálogo completo en pandas. ``limit=None`` devuelve todas las coincidencias.
+    """
     db_path = db_path or ensure_catalog()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        where, params = [], []
         match = _fts_query(query)
         if match:
             sql = ("SELECT s.*, bm25(series_fts) AS score FROM series_fts"
                    " JOIN series s ON s.id = series_fts.rowid"
                    " WHERE series_fts MATCH ?")
-            params.append(match)
+            params: list = [match]
         else:
             sql = "SELECT s.*, 0.0 AS score FROM series s WHERE 1=1"
-        if frequency:
-            where.append("s.frequency = ?")
-            params.append(frequency)
-        if category:
-            where.append("s.category = ?")
-            params.append(category)
-        if where:
-            sql += " AND " + " AND ".join(where)
-        sql += " ORDER BY score, s.code LIMIT ? OFFSET ?"
-        params.extend([limit, offset])
+            params = []
+
+        exact = {
+            "s.frequency": frequency,
+            "s.category": category,
+            "s.area": area,
+            "s.source": source,
+            "s.pub_group": pub_group,
+            "s.group_name": group_name,
+        }
+        for column, value in exact.items():
+            if value and value not in ("Todas", "Todos"):
+                sql += f" AND {column} = ?"
+                params.append(value)
+
+        for column, value in (("s.start", start), ("s.end", end)):
+            if value:
+                sql += f" AND {column} LIKE ?"
+                params.append(f"%{value}%")
+
+        for column, value, operator in (
+            ("s.created", created_from, ">="),
+            ("s.created", created_to, "<="),
+            ("s.updated", updated_from, ">="),
+            ("s.updated", updated_to, "<="),
+        ):
+            if value:
+                sql += f" AND {column} IS NOT NULL AND {column} != '' AND {column} {operator} ?"
+                params.append(value)
+
+        sql += " ORDER BY score, s.code"
+        if limit is not None:
+            sql += " LIMIT ? OFFSET ?"
+            params.extend([limit, offset])
         return [dict(row) for row in conn.execute(sql, params)]
+    finally:
+        conn.close()
+
+
+def count(*, frequency: str | None = None, db_path: str | None = None) -> int:
+    """Número de series del catálogo (opcionalmente de una frecuencia)."""
+    db_path = db_path or ensure_catalog()
+    conn = sqlite3.connect(db_path)
+    try:
+        if frequency:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM series WHERE frequency = ?", (frequency,)
+            ).fetchone()
+        else:
+            row = conn.execute("SELECT COUNT(*) FROM series").fetchone()
+        return int(row[0])
+    finally:
+        conn.close()
+
+
+_DISTINCT_FIELDS = {
+    "category": "category",
+    "source": "source",
+    "area": "area",
+    "pub_group": "pub_group",
+    "group_name": "group_name",
+    "frequency": "frequency",
+}
+
+
+def distinct(field: str, limit: int = 10000, db_path: str | None = None) -> list[str]:
+    """Valores distintos de una columna, ordenados (para desplegables de la GUI)."""
+    try:
+        column = _DISTINCT_FIELDS[field]
+    except KeyError as exc:
+        raise ValueError(f"Campo no permitido: {field}") from exc
+    db_path = db_path or ensure_catalog()
+    conn = sqlite3.connect(db_path)
+    try:
+        rows = conn.execute(
+            f"SELECT DISTINCT {column} FROM series"
+            f" WHERE {column} IS NOT NULL AND {column} != ''"
+            f" ORDER BY {column} LIMIT ?",
+            (limit,),
+        )
+        return [r[0] for r in rows]
     finally:
         conn.close()
 

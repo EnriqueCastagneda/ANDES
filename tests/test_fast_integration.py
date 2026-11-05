@@ -48,6 +48,22 @@ def test_frequency_for_detects_mismatch(tmp_path, monkeypatch):
         raise AssertionError("debía rechazar frecuencias distintas")
 
 
+def test_series_info_uses_official_keys(tmp_path, monkeypatch):
+    _catalog(tmp_path, monkeypatch)
+    info = metadata.series_info("pd04638pd")
+    assert info["Frecuencia"] == "Diaria"
+    assert info["Código de serie"] == "PD04638PD"
+
+
+def test_search_catalog_translates_spanish_filters(tmp_path, monkeypatch):
+    _catalog(tmp_path, monkeypatch)
+    frame = metadata.search_catalog(
+        "", limit=10, filters={"frecuencia": "Mensual", "categoria": "Precios"}
+    )
+    assert len(frame) == 1
+    assert frame.iloc[0][metadata.KNOWN_CODE_COL] == "pn01250pm"
+
+
 def test_cli_download_many_writes_file(tmp_path, monkeypatch):
     frame = pd.DataFrame({"fecha": ["2024-01-01"], "PN00001MM": [1.5]})
     monkeypatch.setattr(cli, "download_many", lambda *a, **k: frame)
