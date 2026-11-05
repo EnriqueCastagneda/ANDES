@@ -915,11 +915,7 @@ def main(page: ft.Page):
         frequency = (info or {}).get("Frecuencia")
 
         # XLS: BCRP entrega un .xls binario genuino sólo por su endpoint
-        if fmt == "xls":
-            if institucion == "MEF":
-                if not silent:
-                    notify("MEF no ofrece XLS; elige CSV o JSON", ft.Colors.AMBER)
-                return None
+        if fmt == "xls" and institucion != "MEF":
             api_url = f"https://estadisticas.bcrp.gob.pe/estadisticas/series/api/{code}/xls/{start}/{end}/esp"
             try:
                 content = _http_get_bytes(api_url, max_retries=3, timeout=30)
