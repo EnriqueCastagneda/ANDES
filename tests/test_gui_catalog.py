@@ -73,7 +73,11 @@ def _texts(control, seen=None):
     if id(control) in seen:
         return
     seen.add(id(control))
-    value = getattr(control, "text", None) or getattr(control, "value", None)
+    value = (
+        getattr(control, "text", None)
+        or getattr(control, "value", None)
+        or getattr(control, "label", None)
+    )
     if isinstance(value, str):
         yield value
     content = getattr(control, "content", None)
@@ -99,3 +103,4 @@ def test_gui_builds_list_from_catalog(tmp_path, monkeypatch):
     assert any("2 series" in text for text in texts)
     assert any("PD04638PD" in text for text in texts)
     assert any("INFLACIÓN USA" in text for text in texts)
+    assert any("Institución" in text for text in texts)

@@ -20,6 +20,8 @@ de IA.
   `bcrp mcp`.
 - **Catálogo local SQLite + FTS5**: búsquedas en milisegundos sin cargar el CSV
   completo de 6,9 MB en cada arranque.
+- **Filtro por institución de origen**: registro en `core/sources.py` para sumar
+  nuevas fuentes sin tocar la lógica de la GUI.
 - **Descarga por lotes**: hasta 10 series por petición, una sola sesión HTTP,
   rate-limit y reintentos con backoff para no activar el WAF del portal.
 - **Servidor MCP** (stdio) con herramientas `search_series`, `get_metadata` y
@@ -147,7 +149,7 @@ path = download_series_file("PN00001MM", "2024-1", "2024-12", "csv")
 ```text
 bcrp_downloader/
 ├── bcrp_downloader/
-│   ├── core/          # api.py, catalog.py, fetcher.py, metadata.py, http.py, paths.py
+│   ├── core/          # api.py, catalog.py, fetcher.py, metadata.py, http.py, paths.py, sources.py
 │   ├── gui/           # views.py, theme.py
 │   ├── cli/           # main.py (Typer)
 │   └── mcp/           # server.py

@@ -7,7 +7,7 @@ import os
 import pandas as pd
 import requests
 
-from . import catalog
+from . import catalog, sources
 from .http import HEADERS
 from .paths import DATA_DIR, METADATA_PATH, METADATA_URL
 
@@ -128,6 +128,7 @@ def _as_frame(rows: list[dict]) -> pd.DataFrame:
 
 
 _FILTER_KEYS = {
+    "institucion": "institution",
     "frecuencia": "frequency",
     "categoria": "category",
     "area": "area",
@@ -143,7 +144,7 @@ _FILTER_KEYS = {
 }
 
 _CATALOG_FILTERS = {
-    "frequency", "category", "area", "source", "pub_group", "group_name",
+    "institution", "frequency", "category", "area", "source", "pub_group", "group_name",
     "start", "end", "created_from", "created_to", "updated_from", "updated_to",
 }
 
@@ -223,5 +224,21 @@ def catalog_count() -> int:
 def catalog_values(field: str) -> list[str]:
     """Valores distintos de una columna del catálogo (para filtros de la GUI)."""
     return catalog.distinct(field)
+
+
+def catalog_institutions() -> list[tuple[str, str]]:
+    """Instituciones presentes en el catálogo como ``(id, nombre corto)``."""
+    present = set(catalog.distinct("institution"))
+    registered = [
+        (source.id, source.short_name)
+        for source in sources.sources()
+        if not present or source.id in present
+    ]
+    return registered or [(source.id, source.short_name) for source in sources.sources()]
+
+
+def institution_options() -> list[tuple[str, str]]:
+    """Instituciones registradas, sin consultar la base (para dibujar la GUI)."""
+    return [(source.id, source.short_name) for source in sources.sources()]
 
 

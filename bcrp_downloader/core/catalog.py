@@ -56,6 +56,7 @@ COLUMNS = _COLUMNS
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS series (
     id INTEGER PRIMARY KEY,
+    institution TEXT NOT NULL DEFAULT 'bcrp',
     code TEXT NOT NULL UNIQUE,
     category TEXT, group_name TEXT, name TEXT NOT NULL,
     description TEXT, methodology TEXT, unit TEXT, scale TEXT, geo TEXT,
@@ -64,12 +65,16 @@ CREATE TABLE IF NOT EXISTS series (
 );
 CREATE INDEX IF NOT EXISTS idx_series_freq ON series(frequency);
 CREATE INDEX IF NOT EXISTS idx_series_cat ON series(category);
+CREATE INDEX IF NOT EXISTS idx_series_inst ON series(institution);
 CREATE VIRTUAL TABLE IF NOT EXISTS series_fts USING fts5(
     code, name, group_name, category, unit,
     content='series', content_rowid='id',
     tokenize="unicode61 remove_diacritics 2"
 );
+PRAGMA user_version = 2;
 """
+
+SCHEMA_VERSION = 2
 
 
 def download_catalog_csv(dest: str = METADATA_PATH, force: bool = False) -> str:
@@ -126,6 +131,19 @@ def build_catalog(csv_path: str = METADATA_PATH, db_path: str = CATALOG_PATH) ->
     return db_path
 
 
+def _schema_ok(db_path: str) -> bool:
+    """Comprueba que el catálogo existente tiene la versión esperada."""
+    try:
+        conn = sqlite3.connect(db_path)
+        try:
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+        finally:
+            conn.close()
+        return int(version) == SCHEMA_VERSION
+    except sqlite3.Error:
+        return False
+
+
 def ensure_catalog(csv_path: str | None = None, db_path: str | None = None,
                    max_age: int = CATALOG_MAX_AGE) -> str:
     """Garantiza un catálogo utilizable; descarga y reindexa solo si hace falta."""
@@ -143,8 +161,10 @@ def ensure_catalog(csv_path: str | None = None, db_path: str | None = None,
                 return db_path  # se sigue usando el catálogo anterior
             raise
 
-    db_stale = not os.path.exists(db_path) or (
-        os.path.getmtime(csv_path) > os.path.getmtime(db_path)
+    db_stale = (
+        not os.path.exists(db_path)
+        or not _schema_ok(db_path)
+        or os.path.getmtime(csv_path) > os.path.getmtime(db_path)
     )
     if db_stale:
         build_catalog(csv_path, db_path)
@@ -159,6 +179,7 @@ def _fts_query(text: str) -> str:
 def search(
     query: str = "",
     *,
+    institution: str | None = None,
     frequency: str | None = None,
     category: str | None = None,
     area: str | None = None,
@@ -195,6 +216,7 @@ def search(
             params = []
 
         exact = {
+            "s.institution": institution,
             "s.frequency": frequency,
             "s.category": category,
             "s.area": area,
@@ -231,23 +253,29 @@ def search(
         conn.close()
 
 
-def count(*, frequency: str | None = None, db_path: str | None = None) -> int:
-    """Número de series del catálogo (opcionalmente de una frecuencia)."""
+def count(*, institution: str | None = None, frequency: str | None = None,
+          db_path: str | None = None) -> int:
+    """Número de series del catálogo (opcionalmente filtradas)."""
     db_path = db_path or ensure_catalog()
     conn = sqlite3.connect(db_path)
     try:
+        where, params = [], []
+        if institution:
+            where.append("institution = ?")
+            params.append(institution)
         if frequency:
-            row = conn.execute(
-                "SELECT COUNT(*) FROM series WHERE frequency = ?", (frequency,)
-            ).fetchone()
-        else:
-            row = conn.execute("SELECT COUNT(*) FROM series").fetchone()
-        return int(row[0])
+            where.append("frequency = ?")
+            params.append(frequency)
+        sql = "SELECT COUNT(*) FROM series"
+        if where:
+            sql += " WHERE " + " AND ".join(where)
+        return int(conn.execute(sql, params).fetchone()[0])
     finally:
         conn.close()
 
 
 _DISTINCT_FIELDS = {
+    "institution": "institution",
     "category": "category",
     "source": "source",
     "area": "area",

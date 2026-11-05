@@ -64,6 +64,13 @@ def test_search_catalog_translates_spanish_filters(tmp_path, monkeypatch):
     assert frame.iloc[0][metadata.KNOWN_CODE_COL] == "pn01250pm"
 
 
+def test_institution_filter(tmp_path, monkeypatch):
+    _catalog(tmp_path, monkeypatch)
+    assert "bcrp" in {source_id for source_id, _ in metadata.catalog_institutions()}
+    assert len(metadata.search_catalog("", filters={"institucion": "bcrp"})) == 2
+    assert metadata.search_catalog("", filters={"institucion": "inei"}).empty
+
+
 def test_cli_download_many_writes_file(tmp_path, monkeypatch):
     frame = pd.DataFrame({"fecha": ["2024-01-01"], "PN00001MM": [1.5]})
     monkeypatch.setattr(cli, "download_many", lambda *a, **k: frame)
