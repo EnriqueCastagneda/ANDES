@@ -285,6 +285,15 @@ def main() -> int:
         check("MEF sin series muestra vacío", "NO SE ENCONTRARON RESULTADOS" in texts)
         browser.shot("04-mef.png")
 
+        # 7b. MEF ofrece opciones propias (semillas + catálogo)
+        browser.click_at({"x": 105, "y": 271})  # desplegable Año
+        time.sleep(1.2)
+        texts = " ".join(browser.texts())
+        check("MEF ofrece opciones de filtro", "2012" in texts and "2026" in texts)
+        browser.shot("05-mef-opciones.png")
+        browser.click_at({"x": 700, "y": 450})  # cerrar menú
+        time.sleep(0.8)
+
         # 8. volver a BCRP para descargar
         browser.click_at({"x": 146, "y": 190})
         time.sleep(1.0)
@@ -307,7 +316,7 @@ def main() -> int:
         # 10. fechas y descarga por lotes
         check("fecha inicio", browser.type_into("Fecha inicio", "2026-11-01"))
         check("fecha fin", browser.type_into("Fecha fin", "2026-11-05"))
-        browser.shot("05-antes-descarga.png")
+        browser.shot("06-antes-descarga.png")
         check("clic Descargar", browser.click_semantics("Descargar"))
 
         deadline = time.time() + 40
@@ -322,7 +331,7 @@ def main() -> int:
             if len(nuevos) >= 3:
                 break
             time.sleep(1)
-        browser.shot("06-descarga.png")
+        browser.shot("07-descarga.png")
         check("3 archivos descargados", len(nuevos) >= 3, ", ".join(nuevos))
 
         if nuevos:

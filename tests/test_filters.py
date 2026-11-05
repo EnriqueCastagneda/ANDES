@@ -116,3 +116,18 @@ def test_mef_listed_even_without_rows(tmp_path, monkeypatch):
     assert ("mef", "MEF") in metadata.catalog_institutions()
     assert ("bcrp", "BCRP") in metadata.catalog_institutions()
     assert metadata.search_catalog("", filters={"institucion": "mef"}).shape[0] == 1
+
+
+def test_mef_filter_options_have_seeds(tmp_path, monkeypatch):
+    _build(tmp_path, monkeypatch)
+    assert "2026" in metadata.institution_filter_options("mef", "start")
+    assert "Gobiernos Locales" in metadata.institution_filter_options("mef", "group_name")
+    assert "Recursos Ordinarios" in metadata.institution_filter_options("mef", "source")
+    assert "Bienes y Servicios" in metadata.institution_filter_options("mef", "category")
+    assert "Programas Presupuestales" in metadata.institution_filter_options(
+        "mef", "pub_group"
+    )
+    # BCRP no hereda las semillas de MEF.
+    assert "Recursos Ordinarios" not in metadata.institution_filter_options(
+        "bcrp", "source"
+    )

@@ -6,7 +6,7 @@ Cada fuente añadida al explorador se declara aquí. El catálogo guarda el
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -19,6 +19,8 @@ class Source:
     base_url: str
     metadata_url: str = ""
     enabled: bool = True
+    # Valores iniciales de los filtros propios (se completan con el catálogo).
+    filter_options: dict[str, tuple[str, ...]] = field(default_factory=dict)
 
 
 SOURCES: tuple[Source, ...] = (
@@ -35,6 +37,36 @@ SOURCES: tuple[Source, ...] = (
         short_name="MEF",
         base_url="https://apps5.mineco.gob.pe/transparencia/Navegador/default.aspx",
         metadata_url="",
+        filter_options={
+            "start": tuple(str(year) for year in range(2026, 2011, -1)),
+            "group_name": (
+                "Gobierno Nacional",
+                "Gobiernos Regionales",
+                "Gobiernos Locales",
+            ),
+            "category": (
+                "Personal y Obligaciones Sociales",
+                "Obligaciones Previsionales",
+                "Bienes y Servicios",
+                "Transferencias",
+                "Otros Gastos",
+                "Adquisición de Activos no Financieros",
+                "Servicio de la Deuda",
+                "Donaciones y Transferencias",
+            ),
+            "source": (
+                "Recursos Ordinarios",
+                "Recursos Directamente Recaudados",
+                "Recursos por Operaciones Oficiales de Crédito",
+                "Donaciones y Transferencias",
+                "Recursos Determinados",
+            ),
+            "pub_group": (
+                "Programas Presupuestales",
+                "Acciones Centrales",
+                "Asignaciones Presupuestarias que no resultan en Productos",
+            ),
+        },
     ),
 )
 
