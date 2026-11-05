@@ -22,8 +22,9 @@ de IA.
   completo de 6,9 MB en cada arranque.
 - **Filtro por institución de origen**: selector fuera de los filtros avanzados.
   BCRP muestra frecuencia y filtros propios; MEF (Portal de Transparencia)
-  muestra Año, Sector, Pliego, Rubro, Fuente de financiamiento y Programa. En
-  «Todas» solo se consulta por palabra clave.
+  muestra Año, Nivel de gobierno, Rubro, Fuente de financiamiento y Programa,
+  con opciones iniciales aunque todavía no haya series cargadas. En «Todas» solo
+  se consulta por palabra clave.
 - **Descarga por lotes**: hasta 10 series por petición, una sola sesión HTTP,
   rate-limit y reintentos con backoff para no activar el WAF del portal.
 - **Servidor MCP** (stdio) con herramientas `search_series`, `get_metadata` y

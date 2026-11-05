@@ -28,6 +28,7 @@ from ..core.metadata import (
     catalog_count,
     catalog_institutions,
     catalog_values,
+    institution_filter_options,
     institution_options,
     load_metadata,
     search_catalog,
@@ -829,8 +830,7 @@ def main(page: ft.Page):
         return {
             "institucion": institution,
             "inicio": mef_anio.value,
-            "area": mef_sector.value,
-            "grupo_serie": mef_pliego.value,
+            "grupo_serie": mef_nivel.value,
             "categoria": mef_rubro.value,
             "fuente": mef_fuente.value,
             "grupo_publicacion": mef_programa.value,
@@ -1141,8 +1141,7 @@ def main(page: ft.Page):
 
     # Filtros propios del Portal de Transparencia (MEF).
     mef_anio = make_adv_dd("Año", "inicio")
-    mef_sector = make_adv_dd("Sector", "area")
-    mef_pliego = make_adv_dd("Pliego", "group_name")
+    mef_nivel = make_adv_dd("Nivel de gobierno", "group_name")
     mef_rubro = make_adv_dd("Rubro", "category")
     mef_fuente = make_adv_dd("Fuente de financiamiento", "source")
     mef_programa = make_adv_dd("Programa", "pub_group")
@@ -1150,7 +1149,7 @@ def main(page: ft.Page):
     def clear_filters(e):
         for dd in (adv_area, adv_fuente, adv_categoria, adv_grupo):
             dd.value = ""
-        for dd in (mef_anio, mef_sector, mef_pliego, mef_rubro, mef_fuente, mef_programa):
+        for dd in (mef_anio, mef_nivel, mef_rubro, mef_fuente, mef_programa):
             dd.value = ""
         for dc in (filtro_creacion_desde, filtro_creacion_hasta, filtro_actual_desde, filtro_actual_hasta):
             dc.controls[0].value = ""
@@ -1275,7 +1274,7 @@ def main(page: ft.Page):
             return False
         return any(
             (dd.value or "").strip()
-            for dd in (mef_anio, mef_sector, mef_pliego, mef_rubro, mef_fuente, mef_programa)
+            for dd in (mef_anio, mef_nivel, mef_rubro, mef_fuente, mef_programa)
         )
 
     def update_master_state():
@@ -1635,7 +1634,7 @@ def main(page: ft.Page):
     )
 
     mef_grid = ft.ResponsiveRow(
-        [mef_anio, mef_sector, mef_pliego, mef_rubro, mef_fuente, mef_programa],
+        [mef_anio, mef_nivel, mef_rubro, mef_fuente, mef_programa],
         spacing=10,
         run_spacing=10,
     )
@@ -1675,7 +1674,7 @@ def main(page: ft.Page):
         )
         for dropdown in (adv_area, adv_fuente, adv_categoria, adv_grupo):
             dropdown.value = ""
-        for dropdown in (mef_anio, mef_sector, mef_pliego, mef_rubro, mef_fuente, mef_programa):
+        for dropdown in (mef_anio, mef_nivel, mef_rubro, mef_fuente, mef_programa):
             dropdown.value = ""
         for control in (
             filtro_creacion_desde,
@@ -1845,15 +1844,14 @@ def main(page: ft.Page):
                 ]
             for dropdown, field in (
                 (mef_anio, "start"),
-                (mef_sector, "area"),
-                (mef_pliego, "group_name"),
+                (mef_nivel, "group_name"),
                 (mef_rubro, "category"),
                 (mef_fuente, "source"),
                 (mef_programa, "pub_group"),
             ):
                 dropdown.options = [ft.dropdown.Option(key="", text="Todos")] + [
                     ft.dropdown.Option(key=value, text=value)
-                    for value in catalog_values(field, "mef")
+                    for value in institution_filter_options("mef", field)
                 ]
             df_metadata = search_catalog("", limit=300)
         except Exception as ex:
@@ -1879,7 +1877,7 @@ def main(page: ft.Page):
                 dropdown.options = [ft.dropdown.Option(key="", text="Todos")] + [
                     ft.dropdown.Option(key=value, text=value) for value in values
                 ]
-            for dropdown in (mef_anio, mef_sector, mef_pliego, mef_rubro, mef_fuente, mef_programa):
+            for dropdown in (mef_anio, mef_nivel, mef_rubro, mef_fuente, mef_programa):
                 dropdown.options = [ft.dropdown.Option(key="", text="Todos")]
 
         metadata_state["ready"] = True

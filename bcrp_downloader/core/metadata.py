@@ -226,6 +226,18 @@ def catalog_values(field: str, institution: str | None = None) -> list[str]:
     return catalog.distinct(field, institution=institution)
 
 
+def institution_filter_options(source_id: str, field: str) -> list[str]:
+    """Opciones de un filtro: valores del catálogo + semillas de la institución."""
+    source = sources.get_source(source_id)
+    values = set(catalog.distinct(field, institution=source_id))
+    if source:
+        values.update(source.filter_options.get(field, ()))
+    return sorted(
+        values,
+        key=lambda value: (0, int(value)) if value.isdigit() else (1, value),
+    )
+
+
 def catalog_institutions() -> list[tuple[str, str]]:
     """Instituciones registradas como ``(id, nombre corto)``.
 
