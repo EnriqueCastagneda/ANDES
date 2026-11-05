@@ -93,8 +93,5 @@
       ]
     }
   ],
-  "pending": [
-    "series",
-    "endpoint de datos"
-  ]
+  "pending": []
 }

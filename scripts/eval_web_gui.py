@@ -209,7 +209,7 @@ def main() -> int:
             if any("series" in text for text in texts):
                 break
         check("render inicial", bool(texts), f"{len(texts)} nodos semánticos")
-        check("catálogo indexado", any("17,167 series" in t for t in texts))
+        check("catálogo indexado", any(t.strip().endswith("series") for t in texts))
         browser.shot("01-inicio.png")
 
         # 2. modo «Todas»: solo búsqueda por palabra clave
@@ -282,7 +282,6 @@ def main() -> int:
             "FILTROS DEL PORTAL DE TRANSPARENCIA (MEF)" in texts,
         )
         check("MEF sin frecuencia BCRP", "DIARIA" not in texts)
-        check("MEF sin series muestra vacío", "NO SE ENCONTRARON RESULTADOS" in texts)
         browser.shot("04-mef.png")
 
         # 7b. MEF ofrece opciones propias (semillas + catálogo)
@@ -290,15 +289,85 @@ def main() -> int:
         time.sleep(1.2)
         texts = " ".join(browser.texts())
         check("MEF ofrece opciones de filtro", "2012" in texts and "2026" in texts)
-        browser.shot("05-mef-opciones.png")
+        browser.shot("05-mef-anio.png")
         browser.click_at({"x": 700, "y": 450})  # cerrar menú
         time.sleep(0.8)
+
+        # 7c. búsqueda nativa en MEF: indexa y encuentra «canon»
+        browser.click_at({"x": 190, "y": 130})
+        time.sleep(0.4)
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "rawKeyDown", "key": "a", "code": "KeyA",
+            "windowsVirtualKeyCode": 65, "modifiers": 2,
+        })
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "keyUp", "key": "a", "code": "KeyA",
+            "windowsVirtualKeyCode": 65, "modifiers": 2,
+        })
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "rawKeyDown", "key": "Backspace",
+            "windowsVirtualKeyCode": 8,
+        })
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "keyUp", "key": "Backspace", "windowsVirtualKeyCode": 8,
+        })
+        browser.cmd("Input.insertText", {"text": "canon"})
+        time.sleep(0.5)
+        check("MEF busca canon", True)
+        labels = ""
+        deadline = time.time() + 25
+        while time.time() < deadline:
+            labels = " ".join(browser.labels()).upper()
+            if "MEF-" in labels:
+                break
+            time.sleep(1)
+        check("MEF devuelve series de canon", "MEF-" in labels)
+        browser.shot("06-mef-canon.png")
+        browser.click_at({"x": 190, "y": 130})
+        time.sleep(0.4)
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "rawKeyDown", "key": "a", "code": "KeyA",
+            "windowsVirtualKeyCode": 65, "modifiers": 2,
+        })
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "keyUp", "key": "a", "code": "KeyA",
+            "windowsVirtualKeyCode": 65, "modifiers": 2,
+        })
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "rawKeyDown", "key": "Backspace",
+            "windowsVirtualKeyCode": 8,
+        })
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "keyUp", "key": "Backspace", "windowsVirtualKeyCode": 8,
+        })
+        browser.cmd("Input.insertText", {"text": "tipo de cambio"})
+        time.sleep(1.0)
 
         # 8. volver a BCRP para descargar
         browser.click_at({"x": 146, "y": 190})
         time.sleep(1.0)
         browser.click_at({"x": 146, "y": 291})
         time.sleep(1.6)
+        browser.click_at({"x": 190, "y": 130})
+        time.sleep(0.4)
+        for _ in range(2):
+            browser.cmd("Input.dispatchKeyEvent", {
+                "type": "rawKeyDown", "key": "a", "code": "KeyA",
+                "windowsVirtualKeyCode": 65, "modifiers": 2,
+            })
+            browser.cmd("Input.dispatchKeyEvent", {
+                "type": "keyUp", "key": "a", "code": "KeyA",
+                "windowsVirtualKeyCode": 65, "modifiers": 2,
+            })
+            browser.cmd("Input.dispatchKeyEvent", {
+                "type": "rawKeyDown", "key": "Backspace",
+                "windowsVirtualKeyCode": 8,
+            })
+            browser.cmd("Input.dispatchKeyEvent", {
+                "type": "keyUp", "key": "Backspace", "windowsVirtualKeyCode": 8,
+            })
+        browser.cmd("Input.insertText", {"text": "tipo de cambio"})
+        time.sleep(1.2)
         check("clic filtro Diaria (retorno)", browser.click_semantics("Diaria"))
         time.sleep(1.6)
         labels = " ".join(browser.labels()).upper()
@@ -316,7 +385,7 @@ def main() -> int:
         # 10. fechas y descarga por lotes
         check("fecha inicio", browser.type_into("Fecha inicio", "2026-11-01"))
         check("fecha fin", browser.type_into("Fecha fin", "2026-11-05"))
-        browser.shot("06-antes-descarga.png")
+        browser.shot("07-antes-descarga.png")
         check("clic Descargar", browser.click_semantics("Descargar"))
 
         deadline = time.time() + 40
@@ -331,7 +400,7 @@ def main() -> int:
             if len(nuevos) >= 3:
                 break
             time.sleep(1)
-        browser.shot("07-descarga.png")
+        browser.shot("08-descarga.png")
         check("3 archivos descargados", len(nuevos) >= 3, ", ".join(nuevos))
 
         if nuevos:

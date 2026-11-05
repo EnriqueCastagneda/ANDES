@@ -13,6 +13,7 @@ import pandas as pd
 
 from .. import APP_NAME, APP_VERSION
 from ..core import portals
+from ..core.adapters import get_adapter
 from ..core.api import (
     EXPORT_FORMATS,
     download_many,
@@ -832,13 +833,26 @@ def main(page: ft.Page):
         filters.update({key: widget.value for key, widget in mef_controls.items()})
         return filters
 
+    def search_current(query: str, limit: int | None = 300):
+        """Busca en la institución activa; delega en su adaptador nativo."""
+        filters = gather_filters()
+        institution = (institution_dd.value or "").strip()
+        if institution:
+            try:
+                return get_adapter(institution).search(
+                    query, filters=filters, limit=limit
+                )
+            except ValueError:
+                pass
+        return search_catalog(query, filters=filters, limit=limit)
+
     # Aplica filtros de los desplegables + búsqueda de texto (SQLite FTS5)
     def apply_filters(e):
         if not metadata_state["ready"]:
             return
         query = search_box.value.strip()
         try:
-            df = search_catalog(query, filters=gather_filters(), limit=300)
+            df = search_current(query, 300)
         except Exception as ex:
             notify(f"Error de búsqueda: {ex}")
             return
@@ -1155,7 +1169,7 @@ def main(page: ft.Page):
         """Exporta el listado filtrado (metadatos) en el formato elegido."""
         query = search_box.value.strip()
         try:
-            df = search_catalog(query, filters=gather_filters(), limit=None)
+            df = search_current(query, None)
         except Exception as ex:
             notify(f"Error al filtrar: {ex}")
             return
@@ -1676,6 +1690,7 @@ def main(page: ft.Page):
             filtro_actual_hasta,
         ):
             control.controls[0].value = ""
+        search_box.value = ""
         apply_filters(None)
         page.update()
 

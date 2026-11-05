@@ -76,7 +76,7 @@ _ENDPOINTS: dict[str, dict[str, str]] = {
 }
 
 _PERIODS = {"bcrp": "2026-11, 2026-4, 2026, 2026-11-5", "mef": "2026"}
-_PENDING = {"bcrp": (), "mef": ("series", "endpoint de datos")}
+_PENDING = {"bcrp": (), "mef": ()}
 
 # Clave de filtro de la GUI -> columna/campo del catálogo.
 _SEED_KEYS = {

@@ -42,7 +42,6 @@ def test_mef_spec_declares_hierarchy():
     options = {dimension.label: dimension.options for dimension in spec.dimensions}
     assert "1999" in options["Año"] and "2026" in options["Año"]
     assert "Gobiernos Locales" in options["Nivel de gobierno"]
-    assert spec.pending
 
 
 def test_fixtures_match_declared_specs():
@@ -55,11 +54,71 @@ def test_adapters_registered():
     assert {"bcrp", "mef"} <= set(adapters.registered())
 
 
-def test_mef_adapter_is_pending():
+class _Response:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return self._payload
+
+
+RECORD = {
+    "ANO_PRC": "2022",
+    "MES_PRC": "4",
+    "RECURSO_NOMBRE": "CANON MINERO",
+    "RUBRO_NOMBRE": "CANON Y SOBRECANON, REGALIAS",
+    "TIPO_ENTIDAD_NOMBRE": "GOBIERNO LOCAL",
+    "GRUPO_TRANSFERENCIA_NOMBRE": "RECURSOS AUTORIZADOS",
+    "FUENTE_NOMBRE": "DONACIONES Y TRANSFERENCIAS",
+    "MONTO_AUTORIZADO": "100.50",
+}
+
+
+def test_mef_adapter_ingests_and_fetches(tmp_path, monkeypatch):
+    csv_path = tmp_path / "meta.csv"
+    csv_path.write_text(CSV, encoding="latin-1")
+    monkeypatch.setattr(catalog, "METADATA_PATH", str(csv_path))
+    monkeypatch.setattr(catalog, "CATALOG_PATH", str(tmp_path / "catalog.sqlite3"))
+
+    from bcrp_downloader.core.adapters import mef
+
+    mef.MefAdapter._resource = None
+    monkeypatch.setattr(
+        mef.requests,
+        "post",
+        lambda *a, **k: _Response(
+            {
+                "resources": [
+                    {
+                        "resource_name": "2022-Transferencias.csv",
+                        "resource_url": f"/dataset/x/resource/{mef.BOOTSTRAP_RESOURCE}",
+                    }
+                ]
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        mef.requests,
+        "get",
+        lambda *a, **k: _Response(
+            {"records": [RECORD], "result": {"include_total": 1}}
+        ),
+    )
+
     adapter = adapters.get_adapter("mef")
-    assert adapter.search("gasto").empty
-    with pytest.raises(NotImplementedError):
-        adapter.fetch(["MEF1"], "2024", "2026")
+    frame = adapter.search("canon")
+    assert len(frame) == 1
+    code = frame.iloc[0]["Código de serie"].upper()
+    assert code.startswith("MEF-")
+    assert "CANON MINERO" in frame.iloc[0]["Nombre de serie"].upper()
+
+    data = adapter.fetch([code], "2022", "2022")
+    assert list(data.columns) == ["fecha", code]
+    assert data.iloc[0]["fecha"] == "2022-04-01"
+    assert data.iloc[0][code] == pytest.approx(100.50)
 
 
 def test_bcrp_adapter_uses_local_catalog(tmp_path, monkeypatch):
