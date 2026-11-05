@@ -8,7 +8,13 @@ from pathlib import Path
 import typer
 
 from .. import APP_NAME, APP_VERSION
-from ..core.api import EXPORT_FORMATS, download_series_data, export_series
+from ..core.api import (
+    EXPORT_FORMATS,
+    download_many,
+    download_series_data,
+    export_series,
+    export_table,
+)
 from ..core.metadata import KNOWN_CODE_COL, KNOWN_NAME_COL, filter_metadata, load_metadata
 
 app = typer.Typer(
@@ -77,6 +83,53 @@ def download(
         shutil.move(generated, out)
         generated = str(out)
     typer.echo(f"Guardado: {generated} ({len(df)} periodos)")
+
+
+@app.command("download-many")
+def download_many_cmd(
+    codes: list[str] = typer.Argument(..., help="Dos o más códigos de serie."),
+    start: str = typer.Option(..., "--start", "-s", help="Periodo inicial (ej. 2024-1)."),
+    end: str = typer.Option(..., "--end", "-e", help="Periodo final (ej. 2024-12)."),
+    frequency: str | None = typer.Option(
+        None, "--frequency", "-f", help="Diaria, Mensual, Trimestral o Anual (se deduce si se omite)."
+    ),
+    out: Path | None = typer.Option(None, "--out", "-o", help="Ruta de salida (solo sin --split)."),
+    fmt: str = typer.Option("csv", "--format", help="csv|json|xml|txt|html."),
+    split: bool = typer.Option(False, "--split", help="Un archivo por serie."),
+) -> None:
+    """Download several series in batches (up to 10 per request)."""
+    fmt = fmt.lower()
+    if fmt not in EXPORT_FORMATS.values() or fmt == "xls":
+        typer.echo(f"Formato no soportado para lotes: {fmt}", err=True)
+        raise typer.Exit(code=2)
+    frame = download_many(codes, start, end, frequency)
+    if frame.empty:
+        typer.echo("No hay datos para el rango consultado.", err=True)
+        raise typer.Exit(code=1)
+
+    out_dir = str(out.parent) if out else None
+    if split:
+        generated = []
+        for code in [column for column in frame.columns if column != "fecha"]:
+            subset = frame[["fecha", code]].dropna(subset=[code])
+            if subset.empty:
+                continue
+            generated.append(
+                export_table(
+                    subset,
+                    f"bcrp_serie_{code}_{start}_to_{end}",
+                    fmt,
+                    out_dir=out_dir,
+                )
+            )
+        typer.echo(f"Guardados: {len(generated)} archivos ({len(frame)} periodos)")
+        return
+
+    path = export_table(frame, f"bcrp_lote_{start}_to_{end}", fmt, out_dir=out_dir)
+    if out and Path(path) != out:
+        shutil.move(path, out)
+        path = str(out)
+    typer.echo(f"Guardado: {path} ({len(frame)} periodos, {frame.shape[1] - 1} series)")
 
 
 @app.command()

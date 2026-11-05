@@ -158,3 +158,54 @@ def download_series_file(
     if df.empty:
         raise ValueError(f"No data for {code} between {start} and {end}")
     return export_series(df, code, start, end, fmt, out_dir=out_dir)
+
+
+def download_many(
+    codes: list[str],
+    start: str,
+    end: str,
+    frequency: str | None = None,
+    *,
+    lang: str = "esp",
+) -> pd.DataFrame:
+    """Descarga varias series en lotes de 10 y las une en un DataFrame ancho.
+
+    Agrupa por frecuencia (el API descarta en silencio las series de otra
+    frecuencia), reutiliza una sola sesión HTTP y cachea cada lote.
+
+    Args:
+        codes: Códigos de serie; deben compartir frecuencia.
+        start: Periodo inicial, p. ej. ``2024-1``.
+        end: Periodo final, p. ej. ``2024-12``.
+        frequency: Frecuencia explícita; si se omite se deduce del catálogo.
+
+    Returns:
+        DataFrame con ``fecha`` (ISO) y una columna por código.
+    """
+    from . import fetcher
+    from .metadata import frequency_for
+
+    codes = [code.strip().upper() for code in codes if code and code.strip()]
+    if not codes:
+        raise ValueError("Se requiere al menos un código de serie")
+    freq = frequency or frequency_for(codes)
+    data = fetcher.fetch_series(codes, start, end, freq, lang=lang)
+
+    frames = []
+    for code in codes:
+        rows = data.get(code) or []
+        if rows:
+            frames.append(
+                pd.DataFrame(
+                    {
+                        "fecha": [row["fecha"] for row in rows],
+                        code: [row["valor"] for row in rows],
+                    }
+                )
+            )
+    if not frames:
+        return pd.DataFrame(columns=["fecha"])
+    out = frames[0]
+    for extra in frames[1:]:
+        out = out.merge(extra, on="fecha", how="outer")
+    return out.sort_values("fecha").reset_index(drop=True)

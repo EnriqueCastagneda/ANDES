@@ -16,7 +16,12 @@ de IA.
 - **GUI** oscura tipo SaaS con búsqueda, filtro por frecuencia, filtros avanzados
   colapsables, selección múltiple, navegación por teclado y tema automático según
   la hora local (claro 06:00–17:59, oscuro 18:00–05:59) con interruptor manual.
-- **CLI** con `bcrp search`, `bcrp download`, `bcrp gui` y `bcrp mcp`.
+- **CLI** con `bcrp search`, `bcrp download`, `bcrp download-many`, `bcrp gui` y
+  `bcrp mcp`.
+- **Catálogo local SQLite + FTS5**: búsquedas en milisegundos sin cargar el CSV
+  completo de 6,9 MB en cada arranque.
+- **Descarga por lotes**: hasta 10 series por petición, una sola sesión HTTP,
+  rate-limit y reintentos con backoff para no activar el WAF del portal.
 - **Servidor MCP** (stdio) con herramientas `search_series`, `get_metadata` y
   `download_series`.
 - **Exportación** a CSV, JSON, XLS, XML, TXT y HTML.
@@ -82,6 +87,7 @@ También funciona `python app.py`.
 bcrp search "tipo de cambio" --frequency Mensual --limit 10
 bcrp download PN00001MM --start 2024-1 --end 2024-12 --out datos/pn00001mm.csv
 bcrp download PN00001MM -s 2024-1 -e 2024-12 --format json
+bcrp download-many PN00001MM PN00002MM PN00003MM -s 2024-1 -e 2024-12 -o lote.csv
 bcrp --help
 ```
 
@@ -141,7 +147,7 @@ path = download_series_file("PN00001MM", "2024-1", "2024-12", "csv")
 ```text
 bcrp_downloader/
 ├── bcrp_downloader/
-│   ├── core/          # api.py, metadata.py, http.py, paths.py
+│   ├── core/          # api.py, catalog.py, fetcher.py, metadata.py, http.py, paths.py
 │   ├── gui/           # views.py, theme.py
 │   ├── cli/           # main.py (Typer)
 │   └── mcp/           # server.py
