@@ -7,6 +7,7 @@ import os
 import pandas as pd
 import requests
 
+from . import catalog
 from .http import HEADERS
 from .paths import DATA_DIR, METADATA_PATH, METADATA_URL
 
@@ -102,5 +103,78 @@ def filter_metadata(df, filters):
         else:
             out = out[series <= limit]
     return out
+
+
+# --- Ruta rápida: catálogo SQLite + FTS5 -----------------------------------
+# Mantiene los mismos nombres de columna que ``load_metadata`` para que la GUI
+# y el MCP puedan cambiar de fuente sin tocar el resto del código.
+
+_COLUMN_BY_FIELD = {
+    field: column for field, column in catalog.COLUMNS.items()
+}
+_FIELDS_BY_COLUMN = {column: field for field, column in _COLUMN_BY_FIELD.items()}
+
+
+def _as_frame(rows: list[dict]) -> pd.DataFrame:
+    """Convierte filas del catálogo al DataFrame con columnas del CSV oficial."""
+    columns = list(_FIELDS_BY_COLUMN)
+    if not rows:
+        return pd.DataFrame(columns=columns)
+    frame = pd.DataFrame(rows)
+    frame = frame.rename(columns=_COLUMN_BY_FIELD)
+    frame = frame.reindex(columns=columns, fill_value="")
+    frame[KNOWN_CODE_COL] = frame[KNOWN_CODE_COL].str.lower()
+    frame[KNOWN_NAME_COL] = frame[KNOWN_NAME_COL].str.lower()
+    return frame
+
+
+def search_catalog(
+    query: str = "",
+    *,
+    frequency: str | None = None,
+    category: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> pd.DataFrame:
+    """Busca en el catálogo local (FTS5) sin descargar el CSV completo.
+
+    Devuelve un DataFrame con las mismas columnas que ``load_metadata``.
+    La primera búsqueda indexa el catálogo; las siguientes responden en
+    milisegundos.
+    """
+    rows = catalog.search(
+        query, frequency=frequency, category=category, limit=limit, offset=offset
+    )
+    return _as_frame(rows)
+
+
+def series_info(code: str) -> dict | None:
+    """Metadatos de una serie, con las claves del CSV oficial."""
+    row = catalog.get(code)
+    if row is None:
+        return None
+    info = {_FIELDS_BY_COLUMN[key]: row[key] for key in _FIELDS_BY_COLUMN if key in row}
+    return info
+
+
+def frequency_for(codes: list[str]) -> str:
+    """Deduce la frecuencia común de varios códigos desde el catálogo."""
+    freqs = []
+    for code in codes:
+        info = catalog.get(code)
+        if info is None:
+            raise ValueError(f"Código de serie desconocido: {code}")
+        freqs.append(info["frequency"])
+    unique = list(dict.fromkeys(freqs))
+    if len(unique) != 1:
+        raise ValueError(
+            "Las series deben compartir frecuencia; se obtuvo: " + ", ".join(unique)
+        )
+    return unique[0]
+
+
+def catalog_frequencies() -> list[tuple[str, int]]:
+    """Frecuencias disponibles y su número de series."""
+    return catalog.frequencies()
 
 
