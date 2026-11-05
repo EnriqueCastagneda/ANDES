@@ -399,6 +399,7 @@ def main(page: ft.Page):
             name_val = str(row[KNOWN_NAME_COL]).upper()
             # Bind row values now so each handler keeps its own series
             row_values = {
+                "Institución": str(row.get("Institución", "")),
                 "Código": code_val,
                 "Nombre": name_val,
                 "Categoría": str(row["Categoría de serie"]).upper(),
@@ -662,6 +663,16 @@ def main(page: ft.Page):
 
     def show_details(values):
         """Render the structured key-value inspector for one series."""
+        relabel = {}
+        if str(values.get("Institución", "")).upper() == "MEF":
+            relabel = {
+                "Categoría": "Rubro",
+                "Grupo": "Nivel de gobierno",
+                "Fuente": "Fuente de financiamiento",
+                "Área publica": "Programa",
+                "Inicio": "Periodo inicial",
+                "Fin": "Periodo final",
+            }
         info_details.controls.clear()
         info_details.controls.append(
             ft.Row(
@@ -683,11 +694,15 @@ def main(page: ft.Page):
         for label, val in values.items():
             if label in ("Código", "Nombre", "Frecuencia", "Descripción"):
                 continue
+            text = str(val).strip()
+            if not text:
+                continue
+            shown = relabel.get(label, label)
             info_details.controls.append(
                 ft.Row(
                     [
-                        ft.Container(content=ft.Text(label, size=12, color=MUTED), width=110),
-                        ft.Container(content=ft.Text(val, size=12, color=TEXT), expand=True),
+                        ft.Container(content=ft.Text(shown, size=12, color=MUTED), width=150),
+                        ft.Container(content=ft.Text(text, size=12, color=TEXT), expand=True),
                     ],
                     spacing=8,
                 )
@@ -895,9 +910,16 @@ def main(page: ft.Page):
             return None
 
         safe_code = re.sub(r"[^\w\-_.]", "_", code.upper())
+        info = series_info(code)
+        institucion = (info or {}).get("Institución", "")
+        frequency = (info or {}).get("Frecuencia")
 
         # XLS: BCRP entrega un .xls binario genuino sólo por su endpoint
         if fmt == "xls":
+            if institucion == "MEF":
+                if not silent:
+                    notify("MEF no ofrece XLS; elige CSV o JSON", ft.Colors.AMBER)
+                return None
             api_url = f"https://estadisticas.bcrp.gob.pe/estadisticas/series/api/{code}/xls/{start}/{end}/esp"
             try:
                 content = _http_get_bytes(api_url, max_retries=3, timeout=30)
@@ -912,9 +934,18 @@ def main(page: ft.Page):
                 notify(f"Guardado: {filepath}", ft.Colors.GREEN)
             return filepath
 
-        info = series_info(code)
-        frequency = (info or {}).get("Frecuencia")
-        if frequency:
+        if institucion == "MEF":
+            try:
+                df_result = get_adapter("mef").fetch([code], start, end)
+            except Exception as ex:
+                if not silent:
+                    notify(f"Error MEF: {ex}")
+                return None
+            if df_result.empty:
+                if not silent:
+                    notify("No hay datos para el rango consultado", ft.Colors.AMBER)
+                return None
+        elif frequency:
             try:
                 rows = fetch_series([code], start, end, frequency).get(code.upper(), [])
             except Exception as ex:
@@ -944,6 +975,7 @@ def main(page: ft.Page):
                     notify("No hay datos para el rango consultado", ft.Colors.AMBER)
                 return None
             df_result = periods_to_dataframe(data, code)
+
         try:
             filepath = export_series(df_result, code, start, end, fmt)
         except Exception as ex:
@@ -1013,10 +1045,16 @@ def main(page: ft.Page):
                     else:
                         failed += 1
             else:
+                institution = (institution_dd.value or "").strip()
                 groups: dict[str, list[str]] = {}
-                for code in codes:
-                    info = series_info(code)
-                    groups.setdefault((info or {}).get("Frecuencia") or "", []).append(code)
+                if institution.upper() == "MEF":
+                    groups["MEF"] = list(codes)
+                else:
+                    for code in codes:
+                        info = series_info(code)
+                        groups.setdefault(
+                            (info or {}).get("Frecuencia") or "", []
+                        ).append(code)
 
                 for gindex, (frequency, group) in enumerate(groups.items(), start=1):
                     progress_text.value = (
@@ -1024,7 +1062,12 @@ def main(page: ft.Page):
                     )
                     refresh(progress_text)
                     frame = None
-                    if frequency:
+                    if frequency == "MEF":
+                        try:
+                            frame = get_adapter("mef").fetch(group, start, end)
+                        except Exception:
+                            frame = None
+                    elif frequency:
                         try:
                             frame = download_many(group, start, end, frequency)
                         except Exception:
@@ -1611,6 +1654,9 @@ def main(page: ft.Page):
     )
 
     count_text = ft.Text("cargando…", size=11, color=MUTED)
+    params_hint = ft.Text(
+        "Periodos BCRP: 2024-1 · 2024-01-15", size=11, color=MUTED
+    )
 
     frequency_box = ft.Container(
         content=frequency_selector,
@@ -1699,6 +1745,24 @@ def main(page: ft.Page):
         ):
             control.controls[0].value = ""
         search_box.value = ""
+        selected_codes.clear()
+        selected_code.value = ""
+        update_master_state()
+        start_input.value = ""
+        end_input.value = ""
+        if institution.upper() == "MEF":
+            start_input.tooltip = "Periodo MEF: 2026-01"
+            end_input.tooltip = "Periodo MEF: 2026-12"
+            params_hint.value = "Periodos MEF: año-mes (2026-01)"
+        elif institution.upper() == "BCRP":
+            start_input.tooltip = "Periodo BCRP: 2024-1 o 2024-01-15"
+            end_input.tooltip = "Periodo BCRP: 2024-12"
+            params_hint.value = "Periodos BCRP: 2024-1 · 2024-01-15"
+        else:
+            start_input.tooltip = "Elige una institución"
+            end_input.tooltip = "Elige una institución"
+            params_hint.value = "Elige una institución para habilitar la descarga"
+        refresh(start_input, end_input, params_hint)
         apply_filters(None)
         page.update()
 
@@ -1795,7 +1859,7 @@ def main(page: ft.Page):
                     ],
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
-                ft.Text("Define el rango y el formato de salida", size=12, color=MUTED),
+                params_hint,
                 params_card,
                 ft.Text("Detalles de la serie", size=12, color=MUTED),
                 ft.Container(

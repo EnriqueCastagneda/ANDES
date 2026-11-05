@@ -100,11 +100,12 @@ def test_mef_adapter_ingests_and_fetches(tmp_path, monkeypatch):
             }
         ),
     )
+    january = dict(RECORD, MES_PRC="1", MONTO_AUTORIZADO="50.25")
     monkeypatch.setattr(
         mef.requests,
         "get",
         lambda *a, **k: _Response(
-            {"records": [RECORD], "result": {"include_total": 1}}
+            {"records": [january, RECORD], "result": {"include_total": 2}}
         ),
     )
 
@@ -114,11 +115,16 @@ def test_mef_adapter_ingests_and_fetches(tmp_path, monkeypatch):
     code = frame.iloc[0]["Código de serie"].upper()
     assert code.startswith("MEF-")
     assert "CANON MINERO" in frame.iloc[0]["Nombre de serie"].upper()
+    assert frame.iloc[0]["Fecha de inicio"] == "2022-01"
+    assert frame.iloc[0]["Fecha de fin"] == "2022-04"
 
     data = adapter.fetch([code], "2022", "2022")
     assert list(data.columns) == ["fecha", code]
-    assert data.iloc[0]["fecha"] == "2022-04-01"
-    assert data.iloc[0][code] == pytest.approx(100.50)
+    assert list(data["fecha"]) == ["2022-01-01", "2022-04-01"]
+    assert data.iloc[0][code] == pytest.approx(50.25)
+
+    partial = adapter.fetch([code], "2022-02", "2022-04")
+    assert list(partial["fecha"]) == ["2022-04-01"]
 
 
 def test_bcrp_adapter_uses_local_catalog(tmp_path, monkeypatch):

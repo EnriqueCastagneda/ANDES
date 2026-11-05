@@ -333,6 +333,51 @@ def main() -> int:
             time.sleep(1)
         check("MEF devuelve series de canon", "MEF-" in labels)
         browser.shot("07-mef-canon.png")
+        texts = " ".join(browser.texts()).upper()
+        check("MEF muestra periodos propios", "PERIODOS MEF" in texts)
+
+        # 7d. selección, detalles y descarga de una serie MEF
+        browser.click_at({"x": 66, "y": 566})
+        time.sleep(0.8)
+        check(
+            "MEF selecciona serie",
+            browser.wait_text("1 seleccionada(s)", timeout=5),
+        )
+        # clic sostenido: el GestureDetector de la fila requiere más hold
+        browser.cmd("Input.dispatchMouseEvent", {
+            "type": "mouseMoved", "x": 300, "y": 566,
+        })
+        time.sleep(0.1)
+        browser.cmd("Input.dispatchMouseEvent", {
+            "type": "mousePressed", "x": 300, "y": 566,
+            "button": "left", "buttons": 1, "clickCount": 1,
+        })
+        time.sleep(0.25)
+        browser.cmd("Input.dispatchMouseEvent", {
+            "type": "mouseReleased", "x": 300, "y": 566,
+            "button": "left", "buttons": 0, "clickCount": 1,
+        })
+        time.sleep(1.2)
+        texts = " ".join(browser.texts()).upper()
+        check(
+            "detalles MEF con etiquetas propias",
+            "RUBRO" in texts and "NIVEL DE GOBIERNO" in texts,
+        )
+        check("fecha MEF inicio", browser.type_into("Fecha inicio", "2026-02"))
+        check("fecha MEF fin", browser.type_into("Fecha fin", "2026-04"))
+        check("descargar MEF", browser.click_semantics("Descargar"))
+        deadline = time.time() + 40
+        mef_files: list[str] = []
+        while time.time() < deadline:
+            mef_files = [
+                name for name in os.listdir(outputs)
+                if "MEF-" in name and (outputs / name).stat().st_mtime >= started - 1
+            ]
+            if mef_files:
+                break
+            time.sleep(1)
+        check("archivo MEF generado", bool(mef_files), ", ".join(mef_files))
+        browser.shot("08-mef-descarga.png")
         browser.click_at({"x": 190, "y": 130})
         time.sleep(0.4)
         browser.cmd("Input.dispatchKeyEvent", {
@@ -399,7 +444,7 @@ def main() -> int:
         # 10. fechas y descarga por lotes
         check("fecha inicio", browser.type_into("Fecha inicio", "2026-11-01"))
         check("fecha fin", browser.type_into("Fecha fin", "2026-11-05"))
-        browser.shot("08-antes-descarga.png")
+        browser.shot("09-antes-descarga.png")
         check("clic Descargar", browser.click_semantics("Descargar"))
 
         deadline = time.time() + 40
@@ -414,7 +459,7 @@ def main() -> int:
             if len(nuevos) >= 3:
                 break
             time.sleep(1)
-        browser.shot("09-descarga.png")
+        browser.shot("10-descarga.png")
         check("3 archivos descargados", len(nuevos) >= 3, ", ".join(nuevos))
 
         if nuevos:
