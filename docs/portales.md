@@ -99,6 +99,6 @@ requieren controles propios.
   encontrados (p. ej. «canon» → Canon Minero, Canon Forestal, Canon Pesquero…) y
   las siguientes son instantáneas. `fetch` agrega los montos mensuales del
   recurso más reciente de Transferencias y respeta el rango pedido (`2026-02` a
-  `2026-04`). Las series guardan inicio/fin mensuales reales (p. ej. `2026-01` a
-  `2026-10`). Limitación actual: solo el recurso más reciente; el histórico por
-  año queda como siguiente iteración.
+  `2026-04`) y recorre todos los años disponibles (2010–2026) usando el CSV
+  filtrado de cada recurso, con caché local por año. Las series guardan
+  inicio/fin mensuales reales (p. ej. `2026-01` a `2026-10`).

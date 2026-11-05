@@ -86,6 +86,7 @@ def test_mef_adapter_ingests_and_fetches(tmp_path, monkeypatch):
     from bcrp_downloader.core.adapters import mef
 
     mef.MefAdapter._resource = None
+    mef.MefAdapter._resources = None
     monkeypatch.setattr(
         mef.requests,
         "post",
@@ -100,12 +101,14 @@ def test_mef_adapter_ingests_and_fetches(tmp_path, monkeypatch):
             }
         ),
     )
-    january = dict(RECORD, MES_PRC="1", MONTO_AUTORIZADO="50.25")
     monkeypatch.setattr(
         mef.requests,
         "get",
         lambda *a, **k: _Response(
-            {"records": [january, RECORD], "result": {"include_total": 2}}
+            {
+                "records": [dict(RECORD, MES_PRC="1"), RECORD],
+                "result": {"include_total": 2},
+            }
         ),
     )
 
@@ -118,6 +121,14 @@ def test_mef_adapter_ingests_and_fetches(tmp_path, monkeypatch):
     assert frame.iloc[0]["Fecha de inicio"] == "2022-01"
     assert frame.iloc[0]["Fecha de fin"] == "2022-04"
 
+    monkeypatch.setattr(
+        adapter,
+        "_monthly_totals",
+        lambda resource_id, recurso, year="": {
+            "2022-01-01": 50.25,
+            "2022-04-01": 100.50,
+        },
+    )
     data = adapter.fetch([code], "2022", "2022")
     assert list(data.columns) == ["fecha", code]
     assert list(data["fecha"]) == ["2022-01-01", "2022-04-01"]
@@ -143,3 +154,10 @@ def test_unknown_portal_rejected():
         adapters.get_adapter("nope")
     with pytest.raises(ValueError):
         portals.spec_for("nope")
+
+
+def test_mef_period_bounds_accept_full_dates():
+    from bcrp_downloader.core.adapters.mef import _bounds
+
+    assert _bounds("2010-01-01", "2026-10-01") == ("2010-01", "2026-10")
+    assert _bounds("2022", "2024") == ("2022-01", "2024-12")
