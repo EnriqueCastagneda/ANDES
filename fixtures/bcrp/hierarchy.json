@@ -1,0 +1,58 @@
+{
+  "id": "bcrp",
+  "name": "Banco Central de Reserva del Perú",
+  "short_name": "BCRP",
+  "base_url": "https://estadisticas.bcrp.gob.pe",
+  "metadata_url": "https://estadisticas.bcrp.gob.pe/estadisticas/series/metadata",
+  "endpoints": {
+    "catalog": "https://estadisticas.bcrp.gob.pe/estadisticas/series/metadata",
+    "series": "https://estadisticas.bcrp.gob.pe/estadisticas/series/api/{codes}/json/{start}/{end}/esp"
+  },
+  "period_format": "2026-11, 2026-4, 2026, 2026-11-5",
+  "pagination": "lotes de 10 series",
+  "dimensions": [
+    {
+      "key": "frecuencia",
+      "label": "Frecuencia",
+      "kind": "frequency",
+      "options": []
+    },
+    {
+      "key": "area",
+      "label": "Área que publica",
+      "kind": "select",
+      "options": []
+    },
+    {
+      "key": "fuente",
+      "label": "Fuente",
+      "kind": "select",
+      "options": []
+    },
+    {
+      "key": "categoria",
+      "label": "Categoría de serie",
+      "kind": "select",
+      "options": []
+    },
+    {
+      "key": "grupo_serie",
+      "label": "Grupo de serie",
+      "kind": "select",
+      "options": []
+    },
+    {
+      "key": "creacion",
+      "label": "Rango de creación",
+      "kind": "date_range",
+      "options": []
+    },
+    {
+      "key": "actualizacion",
+      "label": "Rango de actualización",
+      "kind": "date_range",
+      "options": []
+    }
+  ],
+  "pending": []
+}

@@ -1,0 +1,249 @@
+{
+  "source_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/default.aspx",
+  "final_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/default.aspx",
+  "title": "Consulta Amigable - Navegador",
+  "captured_at": "2026-11-05T21:31:49.944247+00:00",
+  "requests": [
+    {
+      "url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar.aspx",
+      "method": "GET",
+      "type": "Document"
+    },
+    {
+      "url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar_7.aspx",
+      "method": "GET",
+      "type": "Document"
+    },
+    {
+      "url": "https://apps5.mineco.gob.pe/transparencia/Navegador/default.aspx",
+      "method": "GET",
+      "type": "Document"
+    }
+  ],
+  "selects": [
+    {
+      "id": "ctl00_CPH1_DrpYear",
+      "name": "ctl00$CPH1$DrpYear",
+      "options": [
+        {
+          "value": "1999",
+          "text": "1999"
+        },
+        {
+          "value": "2000",
+          "text": "2000"
+        },
+        {
+          "value": "2001",
+          "text": "2001"
+        },
+        {
+          "value": "2002",
+          "text": "2002"
+        },
+        {
+          "value": "2003",
+          "text": "2003"
+        },
+        {
+          "value": "2004",
+          "text": "2004"
+        },
+        {
+          "value": "2005",
+          "text": "2005"
+        },
+        {
+          "value": "2006",
+          "text": "2006"
+        },
+        {
+          "value": "2007",
+          "text": "2007"
+        },
+        {
+          "value": "2008",
+          "text": "2008"
+        },
+        {
+          "value": "2009",
+          "text": "2009"
+        },
+        {
+          "value": "2010",
+          "text": "2010"
+        },
+        {
+          "value": "2011",
+          "text": "2011"
+        },
+        {
+          "value": "2012",
+          "text": "2012"
+        },
+        {
+          "value": "2013",
+          "text": "2013"
+        },
+        {
+          "value": "2014",
+          "text": "2014"
+        },
+        {
+          "value": "2015",
+          "text": "2015"
+        },
+        {
+          "value": "2016",
+          "text": "2016"
+        },
+        {
+          "value": "2017",
+          "text": "2017"
+        },
+        {
+          "value": "2018",
+          "text": "2018"
+        },
+        {
+          "value": "2019",
+          "text": "2019"
+        },
+        {
+          "value": "2020",
+          "text": "2020"
+        },
+        {
+          "value": "2021",
+          "text": "2021"
+        },
+        {
+          "value": "2022",
+          "text": "2022"
+        },
+        {
+          "value": "2023",
+          "text": "2023"
+        },
+        {
+          "value": "2024",
+          "text": "2024"
+        },
+        {
+          "value": "2025",
+          "text": "2025"
+        },
+        {
+          "value": "2026",
+          "text": "2026"
+        }
+      ],
+      "frame_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar_7.aspx"
+    },
+    {
+      "id": "ctl00_CPH1_DrpActProy",
+      "name": "ctl00$CPH1$DrpActProy",
+      "options": [
+        {
+          "value": "ActProy",
+          "text": "Actividades/Proyectos"
+        },
+        {
+          "value": "Actividad",
+          "text": "Sólo Actividades"
+        },
+        {
+          "value": "Proyecto",
+          "text": "Sólo Proyectos"
+        }
+      ],
+      "frame_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar_7.aspx"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "__EVENTTARGET",
+      "name": "__EVENTTARGET",
+      "type": "hidden",
+      "frame_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar_7.aspx"
+    },
+    {
+      "id": "__EVENTARGUMENT",
+      "name": "__EVENTARGUMENT",
+      "type": "hidden",
+      "frame_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar_7.aspx"
+    },
+    {
+      "id": "__VIEWSTATE",
+      "name": "__VIEWSTATE",
+      "type": "hidden",
+      "frame_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar_7.aspx"
+    },
+    {
+      "id": "__EVENTVALIDATION",
+      "name": "__EVENTVALIDATION",
+      "type": "hidden",
+      "frame_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar_7.aspx"
+    },
+    {
+      "id": "ctl00_CPH1_BtnTipoGobierno",
+      "name": "ctl00$CPH1$BtnTipoGobierno",
+      "type": "submit",
+      "frame_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar_7.aspx"
+    },
+    {
+      "id": "ctl00_CPH1_BtnProgramaPpto",
+      "name": "ctl00$CPH1$BtnProgramaPpto",
+      "type": "submit",
+      "frame_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar_7.aspx"
+    },
+    {
+      "id": "ctl00_CPH1_BtnFuncion",
+      "name": "ctl00$CPH1$BtnFuncion",
+      "type": "submit",
+      "frame_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar_7.aspx"
+    },
+    {
+      "id": "ctl00_CPH1_BtnFuenteAgregada",
+      "name": "ctl00$CPH1$BtnFuenteAgregada",
+      "type": "submit",
+      "frame_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar_7.aspx"
+    },
+    {
+      "id": "ctl00_CPH1_BtnRubro",
+      "name": "ctl00$CPH1$BtnRubro",
+      "type": "submit",
+      "frame_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar_7.aspx"
+    },
+    {
+      "id": "ctl00_CPH1_BtnGenerica",
+      "name": "ctl00$CPH1$BtnGenerica",
+      "type": "submit",
+      "frame_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar_7.aspx"
+    },
+    {
+      "id": "ctl00_CPH1_BtnDepartamentoMeta",
+      "name": "ctl00$CPH1$BtnDepartamentoMeta",
+      "type": "submit",
+      "frame_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar_7.aspx"
+    },
+    {
+      "id": "ctl00_CPH1_BtnTrimestre",
+      "name": "ctl00$CPH1$BtnTrimestre",
+      "type": "submit",
+      "frame_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar_7.aspx"
+    },
+    {
+      "id": "ctl00_CPH1_BtnMes",
+      "name": "ctl00$CPH1$BtnMes",
+      "type": "submit",
+      "frame_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar_7.aspx"
+    },
+    {
+      "id": "",
+      "name": "grp1",
+      "type": "radio",
+      "frame_url": "https://apps5.mineco.gob.pe/transparencia/Navegador/Navegar_7.aspx"
+    }
+  ]
+}
