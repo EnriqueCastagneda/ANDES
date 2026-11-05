@@ -20,6 +20,9 @@ de IA.
   `bcrp mcp`.
 - **Catálogo local SQLite + FTS5**: búsquedas en milisegundos sin cargar el CSV
   completo de 6,9 MB en cada arranque.
+- **Filtros plegables por institución**: un botón junto al selector de
+  institución despliega sus filtros; por defecto quedan en «Todos» y la lista usa
+  todo el espacio.
 - **Filtro por institución de origen**: selector fuera de los filtros avanzados.
   BCRP muestra frecuencia y filtros propios; MEF (Portal de Transparencia)
   muestra Año, Nivel de gobierno, Rubro, Fuente de financiamiento y Programa,
