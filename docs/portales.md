@@ -76,6 +76,13 @@ descubrimiento local.
    python scripts/eval_web_gui.py   # GUI en marcha
    ```
 
+## Filtros en la GUI
+
+El selector de institución y el botón de filtros viven en la misma fila. Los
+filtros de cada institución están plegados por defecto y todos sus valores
+arrancan en «Todos»; el botón los muestra u oculta sin ocupar espacio permanente
+en la lista.
+
 ## Añadir una dimensión a la GUI
 
 La sección MEF se construye desde `portals.spec_for("mef").dimensions`. Para un

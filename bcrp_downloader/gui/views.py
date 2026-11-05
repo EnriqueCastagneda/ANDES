@@ -1195,7 +1195,7 @@ def main(page: ft.Page):
         ctrl.col = {"xs": 12, "sm": 6}
 
     advanced_panel = ft.Container(
-        visible=False,
+        visible=True,
         content=ft.Column(
             [
                 adv_grid,
@@ -1223,29 +1223,6 @@ def main(page: ft.Page):
         border=ft.Border.all(1, BORDER),
         border_radius=12,
     )
-
-    filter_btn = ft.OutlinedButton(
-        content="Filtros Avanzados ⚙️",
-        icon=ft.Icons.TUNE,
-        height=44,
-        style=ft.ButtonStyle(
-            color=TEXT,
-            side=ft.BorderSide(1, BORDER),
-            shape=ft.RoundedRectangleBorder(radius=10),
-        ),
-    )
-
-    def toggle_advanced(e):
-        showing = not advanced_panel.visible
-        advanced_panel.visible = showing
-        filter_btn.style = ft.ButtonStyle(
-            color=ACCENT if showing else TEXT,
-            side=ft.BorderSide(1, ACCENT if showing else BORDER),
-            shape=ft.RoundedRectangleBorder(radius=10),
-        )
-        page.update()
-
-    filter_btn.on_click = toggle_advanced
 
     # --- Selección maestra (sólo con filtros activos) ---
     master_checkbox = ft.Checkbox(
@@ -1662,10 +1639,45 @@ def main(page: ft.Page):
     )
 
     bcrp_section = ft.Column(
-        [frequency_box, filter_btn, advanced_panel],
+        [frequency_box, advanced_panel],
         spacing=10,
         visible=False,
     )
+
+    filters_ui = {"open": False}
+    filters_host = ft.Column(
+        [bcrp_section, mef_section], spacing=10, visible=False
+    )
+    filters_toggle = ft.IconButton(
+        icon=ft.Icons.TUNE,
+        icon_size=20,
+        icon_color=MUTED,
+        tooltip="Mostrar filtros",
+        disabled=True,
+        width=44,
+        height=44,
+        style=ft.ButtonStyle(
+            bgcolor=SURFACE_2,
+            shape=ft.RoundedRectangleBorder(radius=12),
+            side=ft.BorderSide(1, BORDER),
+        ),
+    )
+
+    def update_filter_toggle():
+        active = bool(institution_dd.value)
+        filters_host.visible = active and filters_ui["open"]
+        filters_toggle.disabled = not active
+        filters_toggle.icon = (
+            ft.Icons.FILTER_ALT_OFF if filters_ui["open"] else ft.Icons.TUNE
+        )
+        filters_toggle.icon_color = ACCENT if filters_ui["open"] else MUTED
+
+    def toggle_filters(e=None):
+        filters_ui["open"] = not filters_ui["open"]
+        update_filter_toggle()
+        page.update()
+
+    filters_toggle.on_click = toggle_filters
 
     def on_institution_change(e):
         institution = institution_dd.value or ""
@@ -1673,12 +1685,8 @@ def main(page: ft.Page):
         mef_section.visible = institution == "mef"
         if institution != "bcrp":
             set_frequency("Todos", repaint=False)
-        advanced_panel.visible = False
-        filter_btn.style = ft.ButtonStyle(
-            color=TEXT,
-            side=ft.BorderSide(1, BORDER),
-            shape=ft.RoundedRectangleBorder(radius=10),
-        )
+        filters_ui["open"] = False
+        update_filter_toggle()
         for dropdown in (adv_area, adv_fuente, adv_categoria, adv_grupo):
             dropdown.value = ""
         for dropdown in mef_controls.values():
@@ -1714,9 +1722,12 @@ def main(page: ft.Page):
                 ),
                 ft.Text("Explora por institución o palabra clave", size=12, color=MUTED),
                 search_box,
-                institution_dd,
-                bcrp_section,
-                mef_section,
+                ft.Row(
+                    [institution_dd, filters_toggle],
+                    spacing=8,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                filters_host,
                 ft.Row(
                     [
                         master_checkbox,
