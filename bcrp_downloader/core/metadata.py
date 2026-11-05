@@ -227,14 +227,12 @@ def catalog_values(field: str) -> list[str]:
 
 
 def catalog_institutions() -> list[tuple[str, str]]:
-    """Instituciones presentes en el catálogo como ``(id, nombre corto)``."""
-    present = set(catalog.distinct("institution"))
-    registered = [
-        (source.id, source.short_name)
-        for source in sources.sources()
-        if not present or source.id in present
-    ]
-    return registered or [(source.id, source.short_name) for source in sources.sources()]
+    """Instituciones registradas como ``(id, nombre corto)``.
+
+    Se listan todas las fuentes declaradas, tengan o no series cargadas: así el
+    filtro sirve desde el primer día de una integración nueva (p. ej. MEF).
+    """
+    return [(source.id, source.short_name) for source in sources.sources()]
 
 
 def institution_options() -> list[tuple[str, str]]:

@@ -233,16 +233,28 @@ def main() -> int:
         browser.click_at({"x": 118, "y": 322})  # desplegable Institución
         time.sleep(1.2)
         texts = " ".join(browser.texts()).upper()
-        check("opción BCRP listada", "BCRP" in texts)
-        browser.click_at({"x": 89, "y": 422})  # opción BCRP
-        time.sleep(1.4)
+        check("BCRP y MEF listados", "BCRP" in texts and "MEF" in texts)
+        browser.click_at({"x": 89, "y": 462})  # opción MEF
+        time.sleep(1.2)
+        browser.click_semantics("Filtros Avanzados ⚙️")  # cerrar panel
+        time.sleep(1.2)
         texts = " ".join(browser.texts()).upper()
-        check("institución BCRP aplicada", "BCRP" in texts)
-        browser.shot("03-institucion.png")
+        check("MEF sin series muestra vacío", "NO SE ENCONTRARON RESULTADOS" in texts)
+        browser.shot("03-mef.png")
+
+        browser.click_semantics("Filtros Avanzados ⚙️")  # reabrir panel
+        time.sleep(1.2)
+        browser.click_at({"x": 118, "y": 322})  # desplegable Institución
+        time.sleep(1.0)
+        browser.click_at({"x": 89, "y": 422})  # opción BCRP
+        time.sleep(1.2)
+        browser.click_semantics("Filtros Avanzados ⚙️")  # cerrar panel
+        time.sleep(1.2)
+        labels = " ".join(browser.labels()).upper()
+        check("BCRP devuelve series", "SELECCIONAR SERIE" in labels)
+        browser.shot("04-institucion.png")
 
         # 5. selección múltiple
-        browser.click_semantics("Filtros Avanzados ⚙️")  # cerrar panel
-        time.sleep(0.8)
         for code in ("PD04637PD", "PD04638PD", "PD04647PD"):
             browser.click_label(f"Seleccionar serie\n{code}")
             time.sleep(0.3)
@@ -254,7 +266,7 @@ def main() -> int:
         # 6. fechas y descarga por lotes
         check("fecha inicio", browser.type_into("Fecha inicio", "2026-11-01"))
         check("fecha fin", browser.type_into("Fecha fin", "2026-11-05"))
-        browser.shot("04-antes-descarga.png")
+        browser.shot("05-antes-descarga.png")
         check("clic Descargar", browser.click_semantics("Descargar"))
 
         deadline = time.time() + 40
@@ -269,7 +281,7 @@ def main() -> int:
             if len(nuevos) >= 3:
                 break
             time.sleep(1)
-        browser.shot("05-descarga.png")
+        browser.shot("06-descarga.png")
         check("3 archivos descargados", len(nuevos) >= 3, ", ".join(nuevos))
 
         if nuevos:

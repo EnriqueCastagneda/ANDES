@@ -29,6 +29,13 @@ SOURCES: tuple[Source, ...] = (
         base_url="https://estadisticas.bcrp.gob.pe",
         metadata_url="https://estadisticas.bcrp.gob.pe/estadisticas/series/metadata",
     ),
+    Source(
+        id="mef",
+        name="Ministerio de Economía y Finanzas - Portal de Transparencia",
+        short_name="MEF",
+        base_url="https://apps5.mineco.gob.pe/transparencia/Navegador/default.aspx",
+        metadata_url="",
+    ),
 )
 
 DEFAULT_SOURCE = "bcrp"

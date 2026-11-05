@@ -103,7 +103,11 @@ def _rows(csv_path: str) -> Iterable[tuple]:
             code = (row.get(_COLUMNS["code"]) or "").strip()
             if not code:
                 continue
-            yield tuple((row.get(col) or "").strip() for col in _COLUMNS.values())
+            institution = (
+                row.get("Institución") or row.get("institution") or "bcrp"
+            ).strip().lower()
+            values = tuple((row.get(col) or "").strip() for col in _COLUMNS.values())
+            yield (institution, *values)
 
 
 def build_catalog(csv_path: str = METADATA_PATH, db_path: str = CATALOG_PATH) -> str:
@@ -117,10 +121,10 @@ def build_catalog(csv_path: str = METADATA_PATH, db_path: str = CATALOG_PATH) ->
     try:
         conn.executescript(_SCHEMA)
         conn.executemany(
-            "INSERT INTO series (code, category, group_name, name, description,"
-            " methodology, unit, scale, geo, source, frequency, created,"
-            " pub_group, area, updated, start, end, memo)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO series (institution, code, category, group_name, name,"
+            " description, methodology, unit, scale, geo, source, frequency,"
+            " created, pub_group, area, updated, start, end, memo)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             _rows(csv_path),
         )
         conn.execute("INSERT INTO series_fts(series_fts) VALUES('rebuild')")

@@ -20,8 +20,8 @@ de IA.
   `bcrp mcp`.
 - **Catálogo local SQLite + FTS5**: búsquedas en milisegundos sin cargar el CSV
   completo de 6,9 MB en cada arranque.
-- **Filtro por institución de origen**: registro en `core/sources.py` para sumar
-  nuevas fuentes sin tocar la lógica de la GUI.
+- **Filtro por institución de origen**: registro en `core/sources.py` con BCRP y
+  MEF (Portal de Transparencia); listo para sumar nuevas fuentes.
 - **Descarga por lotes**: hasta 10 series por petición, una sola sesión HTTP,
   rate-limit y reintentos con backoff para no activar el WAF del portal.
 - **Servidor MCP** (stdio) con herramientas `search_series`, `get_metadata` y
