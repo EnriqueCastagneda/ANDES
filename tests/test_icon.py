@@ -1,6 +1,8 @@
 """Icono de aplicación: tamaños, colores y paquetes .ico/.icns."""
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 
 import pytest
@@ -70,3 +72,21 @@ def test_svg_source_is_not_black():
     assert "#1A1C33" in svg
     assert "#E3A94F" in svg or "<path" in svg
     assert 'fill="#000000"' not in svg
+
+def test_loading_animation_uses_app_icon():
+    source = (ICON_DIR / "andes_icono_512.png").read_bytes()
+    loading = (ROOT / "assets" / "icons" / "loading-animation.png").read_bytes()
+    assert hashlib.sha256(source).digest() == hashlib.sha256(loading).digest()
+
+
+def test_manifest_uses_ande_branding():
+    data = json.loads(
+        (ROOT / "assets" / "manifest.json").read_text(encoding="utf-8")
+    )
+    assert data["name"].startswith("ANDES")
+    assert data["short_name"] == "ANDES"
+    assert data["background_color"] == "#1A1C33"
+    assert data["theme_color"] == "#1A1C33"
+    icons = {icon["src"] for icon in data["icons"]}
+    assert "icons/icon-192.png" in icons
+    assert "icons/icon-512.png" in icons

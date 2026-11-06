@@ -37,7 +37,8 @@ de IA.
 - **Isotipo**: colibrí de Nasca con flecha de descarga, inspirado en los
   geoglifos y la geometría andina.
 - **Icono**: `assets/icon/` (16–1024 px, `.ico`, `.icns`, `.svg`); favicon y
-  iconos PWA en `assets/favicon.png` y `assets/icons/`.
+  iconos PWA en `assets/favicon.png` y `assets/icons/`. El icono sustituye a la
+  animación de carga de Flet mediante `assets/icons/loading-animation.png`.
 - **Temas**: oscuro `#1b293d` / `#d8b56d`; claro `#f1eadc` / `#2a3f48`.
 - **Marca**: el uso de la identidad se rige por [`TRADEMARKS.md`](TRADEMARKS.md).
 - **Sitios**: desde «Acerca de ANDES» → «Sitios» se listan los 57 portales de
