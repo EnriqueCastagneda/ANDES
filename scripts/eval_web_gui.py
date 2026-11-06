@@ -492,7 +492,15 @@ def main() -> int:
             time.sleep(1)
         check("archivo MEF generado", bool(mef_files), ", ".join(mef_files))
         if mef_files:
-            rows = (outputs / mef_files[0]).read_text(encoding="utf-8-sig").splitlines()
+            rows = []
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                rows = (outputs / mef_files[0]).read_text(
+                    encoding="utf-8-sig"
+                ).splitlines()
+                if len(rows) > 150:
+                    break
+                time.sleep(1)
             check("MEF histórico completo", len(rows) > 150, f"{len(rows)} filas")
         browser.shot("08-mef-descarga.png")
 

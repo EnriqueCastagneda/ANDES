@@ -295,7 +295,13 @@ def main(page: ft.Page):
     search_row = ft.Row(
         [
             search_box,
-            ft.Icon(ft.Icons.SEARCH, size=18, color=MUTED),
+            ft.IconButton(
+                ft.Icons.SEARCH,
+                icon_size=18,
+                icon_color=MUTED,
+                tooltip="Buscar",
+                on_click=lambda e: apply_filters(None),
+            ),
             ft.IconButton(
                 ft.Icons.CLEAR,
                 icon_size=18,
@@ -1420,7 +1426,13 @@ def main(page: ft.Page):
                 ft.Row([filtro_actual_desde, filtro_actual_hasta], spacing=10),
                 ft.Row(
                     [
-                        ft.Icon(ft.Icons.SEARCH, size=14, color=MUTED),
+                        ft.IconButton(
+                            ft.Icons.SEARCH,
+                            icon_size=16,
+                            icon_color=MUTED,
+                            tooltip="Aplicar filtros",
+                            on_click=lambda e: apply_filters(None),
+                        ),
                         ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED)),
                         ft.TextButton(
                             "Descargar listado",
@@ -1525,8 +1537,13 @@ def main(page: ft.Page):
             if history_state.get("open"):
                 close_history()
                 return
-            if dialog_state["about"] or dialog_state["sites"]:
+            if dialog_stack:
                 close_dialog()
+                return
+            if filters_ui.get("open"):
+                filters_ui["open"] = False
+                update_filter_toggle()
+                page.update()
                 return
         if not visible_cards:
             return
@@ -1571,20 +1588,27 @@ def main(page: ft.Page):
                 rows.append((site["name"], site["url"]))
         return rows
 
-    dialog_state = {"about": False, "sites": False}
+    dialog_stack: list[str] = []
+
+    def push_dialog(name: str):
+        dialog_stack.append(name)
+
+    def drop_dialog(name: str):
+        for index in range(len(dialog_stack) - 1, -1, -1):
+            if dialog_stack[index] == name:
+                del dialog_stack[index]
+                break
 
     def close_dialog():
         """Cierra el diálogo superior y actualiza el estado."""
-        if dialog_state["sites"]:
-            dialog_state["sites"] = False
-        elif dialog_state["about"]:
-            dialog_state["about"] = False
+        if dialog_stack:
+            dialog_stack.pop()
         page.pop_dialog()
         page.update()
 
     def show_sites(e=None):
         """Lista desplegable de portales con enlace oculto en el nombre."""
-        dialog_state["sites"] = True
+        push_dialog("sites")
         entries = sites_data()
         mobile = (page.width or 0) < 600
         listing = ft.ListView(spacing=2, expand=True)
@@ -1653,6 +1677,7 @@ def main(page: ft.Page):
         if mobile:
             page.show_dialog(
                 ft.BottomSheet(
+                    on_dismiss=lambda e: drop_dialog("sites"),
                     content=ft.Container(
                         content=ft.Column(
                             [
@@ -1845,11 +1870,11 @@ def main(page: ft.Page):
 
     def show_about(e):
         mobile = (page.width or 0) < 600
-        dialog_state["about"] = True
+        push_dialog("about")
 
         def dismissed(ev=None):
-            dialog_state["about"] = False
-            dialog_state["sites"] = False
+            drop_dialog("about")
+            drop_dialog("sites")
             bubble_state["control"] = None
 
         content = build_about_content(mobile)
@@ -2071,7 +2096,13 @@ def main(page: ft.Page):
             mef_grid,
             ft.Row(
                 [
-                    ft.Icon(ft.Icons.SEARCH, size=14, color=MUTED),
+                    ft.IconButton(
+                        ft.Icons.SEARCH,
+                        icon_size=16,
+                        icon_color=MUTED,
+                        tooltip="Aplicar filtros",
+                        on_click=lambda e: apply_filters(None),
+                    ),
                     ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED)),
                 ],
                 spacing=4,
@@ -2095,7 +2126,13 @@ def main(page: ft.Page):
             inei_grid,
             ft.Row(
                 [
-                    ft.Icon(ft.Icons.SEARCH, size=14, color=MUTED),
+                    ft.IconButton(
+                        ft.Icons.SEARCH,
+                        icon_size=16,
+                        icon_color=MUTED,
+                        tooltip="Aplicar filtros",
+                        on_click=lambda e: apply_filters(None),
+                    ),
                     ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED)),
                 ],
                 spacing=4,
@@ -2119,7 +2156,13 @@ def main(page: ft.Page):
             inei_tematico_grid,
             ft.Row(
                 [
-                    ft.Icon(ft.Icons.SEARCH, size=14, color=MUTED),
+                    ft.IconButton(
+                        ft.Icons.SEARCH,
+                        icon_size=16,
+                        icon_color=MUTED,
+                        tooltip="Aplicar filtros",
+                        on_click=lambda e: apply_filters(None),
+                    ),
                     ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED)),
                 ],
                 spacing=4,
@@ -2143,7 +2186,13 @@ def main(page: ft.Page):
             gobpe_grid,
             ft.Row(
                 [
-                    ft.Icon(ft.Icons.SEARCH, size=14, color=MUTED),
+                    ft.IconButton(
+                        ft.Icons.SEARCH,
+                        icon_size=16,
+                        icon_color=MUTED,
+                        tooltip="Aplicar filtros",
+                        on_click=lambda e: apply_filters(None),
+                    ),
                     ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED)),
                 ],
                 spacing=4,
@@ -2308,11 +2357,12 @@ def main(page: ft.Page):
     def select_institution(key: str, label: str):
         institution_state["value"] = key
         institution_text.value = label
-        page.pop_dialog()
+        close_dialog()
         on_institution_change(None)
 
     def open_institution_menu(e=None):
         """Selector con globo de nombre completo por institución."""
+        push_dialog("institucion")
         options = institution_state["options"]
         mobile = (page.width or 0) < 600
         listing = ft.ListView(spacing=2, expand=True)
@@ -2375,6 +2425,7 @@ def main(page: ft.Page):
         if mobile:
             page.show_dialog(
                 ft.BottomSheet(
+                    on_dismiss=lambda e: drop_dialog("institucion"),
                     content=ft.Container(
                         content=ft.Column(
                             [
