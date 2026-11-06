@@ -29,6 +29,8 @@ de IA.
   geoglifos y la geometría andina.
 - **Temas**: oscuro `#1b293d` / `#d8b56d`; claro `#f1eadc` / `#2a3f48`.
 - **Marca**: el uso de la identidad se rige por [`TRADEMARKS.md`](TRADEMARKS.md).
+- **Sitios**: desde «Acerca de ANDES» → «Sitios» se listan los 57 portales de
+  datos con su nombre completo y enlace, con filtro de búsqueda.
 
 Los datos pertenecen a sus instituciones productoras. ANDES reconoce la fuente,
 la metodología, la cobertura y las condiciones de reutilización de cada serie.

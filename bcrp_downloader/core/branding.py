@@ -27,6 +27,28 @@ DARK_TEXT = "#d8b56d"
 LIGHT_BG = "#f1eadc"
 LIGHT_TEXT = "#2a3f48"
 
+# Fuentes de datos base, además de los portales descubiertos en Gob.pe.
+DATA_SITES = (
+    (
+        "Banco Central de Reserva del Perú (BCRP)",
+        "https://estadisticas.bcrp.gob.pe",
+    ),
+    (
+        "Ministerio de Economía y Finanzas (MEF) — Datos Abiertos",
+        "https://datosabiertos.mef.gob.pe",
+    ),
+    (
+        "Instituto Nacional de Estadística e Informática (INEI) — "
+        "Población proyectada",
+        "https://www.gob.pe/institucion/inei",
+    ),
+    (
+        "Instituto Nacional de Estadística e Informática (INEI) — "
+        "Índice temático",
+        "https://www.inei.gob.pe/estadisticas-indice-tematico/",
+    ),
+)
+
 # Paleta categórica accesible para gráficos (compatible con ambos temas).
 CHART_COLORS = (
     "#c08a3e",

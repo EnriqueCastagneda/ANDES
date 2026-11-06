@@ -1510,13 +1510,144 @@ def main(page: ft.Page):
     page.on_keyboard_event = on_keyboard
 
     # --- Acerca de ---
-    async def open_bcrp_docs(e):
-        try:
-            await url_launcher.launch_url(
-                "https://estadisticas.bcrp.gob.pe/estadisticas/series/"
+    def sites_data() -> list[tuple[str, str]]:
+        """Fuentes base + un sitio por institución descubierta en Gob.pe."""
+        seen: set[str] = set()
+        rows: list[tuple[str, str]] = []
+        for name, url in branding.DATA_SITES:
+            if url not in seen:
+                seen.add(url)
+                rows.append((name, url))
+        for site in gobpe.sites():
+            if site["url"] not in seen:
+                seen.add(site["url"])
+                rows.append((site["name"], site["url"]))
+        return rows
+
+    def show_sites(e=None):
+        """Lista desplegable de portales con enlace oculto en el nombre."""
+        entries = sites_data()
+        mobile = (page.width or 0) < 600
+        listing = ft.ListView(spacing=2, expand=True)
+
+        def render(query: str = ""):
+            needle = query.strip().lower()
+            listing.controls.clear()
+            for name, url in entries:
+                if needle and needle not in name.lower():
+                    continue
+                link = ft.TextButton(
+                    content=ft.Text(
+                        name,
+                        size=12,
+                        color=ACCENT,
+                        text_align=ft.TextAlign.RIGHT,
+                    ),
+                    tooltip=url,
+                    on_click=lambda ev, target=url: page.run_task(
+                        open_portal, target
+                    ),
+                    style=ft.ButtonStyle(
+                        padding=ft.Padding.symmetric(
+                            horizontal=6, vertical=2
+                        ),
+                        overlay_color=ft.Colors.with_opacity(0.08, ACCENT),
+                    ),
+                )
+                listing.controls.append(
+                    ft.Container(
+                        content=ft.Row(
+                            [ft.Container(expand=True), link],
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        ),
+                        padding=ft.Padding.symmetric(vertical=2),
+                        border=ft.Border.only(
+                            bottom=ft.BorderSide(1, BORDER)
+                        ),
+                    )
+                )
+
+        search = ft.TextField(
+            hint_text="Filtrar institución…",
+            dense=True,
+            filled=True,
+            fill_color=SURFACE_2,
+            text_size=12,
+            border_radius=10,
+            on_change=lambda ev: render(ev.control.value),
+        )
+        render("")
+        content = ft.Column(
+            [
+                search,
+                ft.Text(
+                    f"{len(entries)} portales de datos",
+                    size=11,
+                    color=MUTED,
+                ),
+                ft.Container(listing, height=360 if not mobile else 300),
+            ],
+            spacing=8,
+            tight=True,
+        )
+        if mobile:
+            page.show_dialog(
+                ft.BottomSheet(
+                    content=ft.Container(
+                        content=ft.Column(
+                            [
+                                ft.Text(
+                                    "Sitios de datos",
+                                    size=16,
+                                    weight=ft.FontWeight.W_700,
+                                    color=TEXT,
+                                ),
+                                content,
+                                ft.TextButton(
+                                    "Cerrar",
+                                    on_click=lambda ev: page.pop_dialog(),
+                                ),
+                            ],
+                            spacing=8,
+                            tight=True,
+                        ),
+                        padding=16,
+                    ),
+                )
             )
-        except Exception:
-            pass
+            return
+        page.show_dialog(
+            ft.AlertDialog(
+                modal=True,
+                bgcolor=SURFACE,
+                shape=ft.RoundedRectangleBorder(radius=16),
+                title=ft.Row(
+                    [
+                        ft.Icon(ft.Icons.PUBLIC, color=ACCENT, size=20),
+                        ft.Text(
+                            "Sitios de datos",
+                            size=18,
+                            weight=ft.FontWeight.W_700,
+                            color=TEXT,
+                        ),
+                    ],
+                    spacing=8,
+                ),
+                content=ft.Container(width=560, content=content),
+                actions=[
+                    ft.Button(
+                        "Cerrar",
+                        on_click=lambda ev: page.pop_dialog(),
+                        style=ft.ButtonStyle(
+                            bgcolor=ACCENT,
+                            color=ON_ACCENT,
+                            shape=ft.RoundedRectangleBorder(radius=10),
+                        ),
+                    )
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+        )
 
     async def copy_contact(e):
         """Copy the author email and show the 'Copied!' micro-bubble."""
@@ -1592,6 +1723,12 @@ def main(page: ft.Page):
                 "estadísticos de Gob.pe.",
                 size=11,
                 color=MUTED,
+            ),
+            ft.TextButton(
+                "Sitios de datos",
+                icon=ft.Icons.PUBLIC,
+                on_click=show_sites,
+                style=ft.ButtonStyle(color=ACCENT),
             ),
             ft.Divider(height=12, thickness=1, color=BORDER),
             ft.Text(
@@ -1672,9 +1809,9 @@ def main(page: ft.Page):
             content=ft.Container(width=400, content=content),
             actions=[
                 ft.TextButton(
-                    "Sitio del BCRP",
-                    icon=ft.Icons.LINK,
-                    on_click=open_bcrp_docs,
+                    "Sitios",
+                    icon=ft.Icons.PUBLIC,
+                    on_click=show_sites,
                     style=ft.ButtonStyle(color=TEXT),
                 ),
                 ft.Button(
