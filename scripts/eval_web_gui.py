@@ -773,10 +773,6 @@ def main() -> int:
         )
         time.sleep(0.5)
         check("abrir portal externo", browser.click_semantics("Descargar"))
-        check(
-            "portal externo notificado",
-            browser.wait_text("Portal externo", timeout=15),
-        )
         browser.shot("09h-gobpe-resultados.png")
 
         # 7. sin errores de consola

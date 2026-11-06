@@ -33,11 +33,11 @@ ambos temas). No se usa el color como único portador de información.
 
 ## Logotipo y variantes
 
-- `assets/andes_mark_gold.png`: isotipo dorado para fondos oscuros.
-- `assets/andes_mark_teal.png`: isotipo azul verdoso para fondos claros.
-- `assets/andes_mark_light.png`: monocromático claro.
-- `assets/andes_mark_dark.png`: monocromático oscuro.
-- `assets/andes_mark_gold.svg` y `andes_mark_teal.svg`: fuentes vectoriales.
+- `assets/andes_logo_oscuro.png`: logotipo horizontal dorado para fondo oscuro.
+- `assets/andes_logo_claro.png`: logotipo horizontal oscuro con acento dorado.
+- `assets/andes_isotipo_oscuro.png`: isotipo sobre fondo `#1A1C33`.
+- `assets/andes_isotipo_claro.png`: isotipo sobre fondo `#F8F7EE`.
+- Los `.svg` correspondientes son la fuente vectorial oficial.
 
 Composición horizontal: isotipo + «ANDES» + «Open Data Platform». El nombre
 tiene mayor jerarquía que el descriptor.

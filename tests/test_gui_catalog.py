@@ -115,7 +115,7 @@ def test_gui_builds_list_from_catalog(tmp_path, monkeypatch):
 
     assert page.controls, "la vista no agregó controles"
     texts = list(_texts(page.controls[0]))
-    assert any("2 series" in text for text in texts)
+    assert "2" in texts and "series" in texts
     assert any("PD04638PD" in text for text in texts)
     assert any("INFLACIÓN USA" in text for text in texts)
     assert any("Institución" in text for text in texts)

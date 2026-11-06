@@ -63,10 +63,10 @@ CHART_COLORS = (
 
 # Rutas relativas a ``assets_dir="assets"`` (Flet antepone el directorio).
 ASSETS = {
-    "mark_gold": "andes_mark_gold.png",
-    "mark_teal": "andes_mark_teal.png",
-    "mark_light": "andes_mark_light.png",
-    "mark_dark": "andes_mark_dark.png",
+    "logo_light": "andes_logo_claro.png",
+    "logo_dark": "andes_logo_oscuro.png",
+    "mark_light": "andes_isotipo_claro.png",
+    "mark_dark": "andes_isotipo_oscuro.png",
 }
 
 
@@ -154,6 +154,11 @@ def theme_dark() -> ft.Theme:
     return ft.Theme(color_scheme=_scheme_dark())
 
 
+def logo_for(theme_mode: ft.ThemeMode) -> str:
+    """Logotipo horizontal con contraste correcto para el tema."""
+    return ASSETS["logo_light"] if theme_mode == ft.ThemeMode.LIGHT else ASSETS["logo_dark"]
+
+
 def mark_for(theme_mode: ft.ThemeMode) -> str:
-    """Ruta del isotipo con contraste correcto para el tema."""
-    return ASSETS["mark_teal"] if theme_mode == ft.ThemeMode.LIGHT else ASSETS["mark_gold"]
+    """Isotipo con contraste correcto para el tema."""
+    return ASSETS["mark_light"] if theme_mode == ft.ThemeMode.LIGHT else ASSETS["mark_dark"]
