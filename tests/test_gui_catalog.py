@@ -130,16 +130,22 @@ def test_institution_selector_outside_filters(tmp_path, monkeypatch):
     page = FakePage()
     views.main(page)
 
-    dropdowns = [
+    selectors = [
         control
         for control in _controls(page.controls[0])
-        if type(control).__name__ == "Dropdown"
-        and getattr(control, "label", None) == "Institución"
+        if type(control).__name__ == "Container"
+        and control.width == 260
+        and control.on_click is not None
     ]
-    assert len(dropdowns) == 1
-    selector = dropdowns[0]
-    assert selector.value == ""
-    assert {"BCRP", "MEF"} <= {option.text for option in selector.options}
+    assert len(selectors) == 1
+    selector = selectors[0]
+    texts = [
+        control
+        for control in _controls(selector)
+        if type(control).__name__ == "Text"
+    ]
+    assert any(text.value == "Institución" for text in texts)
+    assert any(text.value == "Todas" for text in texts)
 
     # Por defecto («Todas») los filtros de institución están ocultos.
     hidden = [
