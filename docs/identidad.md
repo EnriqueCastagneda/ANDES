@@ -64,16 +64,18 @@ sigue la hora local (claro 06:00–17:59).
 
 ## Pantalla de carga y PWA
 
-- `assets/icons/loading-animation.png` reemplaza la animación de Flet durante
-  la carga web. Flet busca primero los recursos del usuario.
+- `assets/icons/loading-andes.png` reemplaza la animación de Flet durante la
+  carga web. Flet busca primero los recursos del usuario. Se usa un nombre
+  único para evitar la caché del navegador.
 - `assets/manifest.json` define nombre, colores y iconos PWA de ANDES.
 - En compilaciones (`flet build`), `assets/` se empaqueta y el icono se declara
   en `[tool.flet] icon`. La pantalla de arranque nativa de Android/iOS puede
   aplicar además el icono y el color del sistema; se documenta como límite del
   runtime.
-- Favicon: `assets/favicon.png`.
+- Favicon: `assets/favicon.png` y `assets/icons/andes-favicon.png` (nombre
+  único para vencer la caché).
 - `assets/index.html` personaliza título, `theme-color`, fondo de carga y la URL
-  versionada `favicon.png?v=2` para vencer la caché del navegador. Conserva los
+  con rutas únicas de favicon y carga para vencer la caché. Conserva los
   marcadores de Flet (`<!-- fletAppConfig -->`, `<base>`); revísalo al actualizar
   Flet.
 
