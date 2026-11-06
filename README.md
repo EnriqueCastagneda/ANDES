@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/andes_logo_oscuro.svg">
+    <img src="assets/andes_logo_claro.svg" alt="ANDES — Open Data Platform" width="360">
+  </picture>
+</p>
+
 # ANDES — Open Data Platform
 
 **Archivo Nacional de Datos Estadísticos y Sociales**  
