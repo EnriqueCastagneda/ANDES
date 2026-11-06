@@ -39,9 +39,11 @@ def test_required_colors_are_exact():
     assert light.on_surface.lower() == "#2a3f48"
 
 
-def test_mark_matches_theme():
-    assert branding.mark_for(ft.ThemeMode.LIGHT).endswith("teal.png")
-    assert branding.mark_for(ft.ThemeMode.DARK).endswith("gold.png")
+def test_logo_and_mark_match_theme():
+    assert branding.logo_for(ft.ThemeMode.LIGHT) == "andes_logo_claro.png"
+    assert branding.logo_for(ft.ThemeMode.DARK) == "andes_logo_oscuro.png"
+    assert branding.mark_for(ft.ThemeMode.LIGHT) == "andes_isotipo_claro.png"
+    assert branding.mark_for(ft.ThemeMode.DARK) == "andes_isotipo_oscuro.png"
 
 
 def test_resolve_theme_by_hour():

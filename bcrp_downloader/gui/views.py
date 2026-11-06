@@ -60,6 +60,10 @@ def main(page: ft.Page):
     RADIUS = 16
 
     page.title = f"{APP_NAME} — {APP_TAGLINE}"
+    try:
+        page.window.icon = branding.ASSETS["mark_dark"]
+    except Exception:
+        pass
     page.bgcolor = BG
     page.window.width = 1180
     page.window.height = 760
@@ -71,10 +75,21 @@ def main(page: ft.Page):
     theme_controller = ThemeController(page)
     theme_controller.start()
 
+    brand_tagline = ft.Text(
+        APP_TAGLINE,
+        size=11,
+        color=MUTED,
+        no_wrap=True,
+        overflow=ft.TextOverflow.ELLIPSIS,
+        expand=True,
+    )
+    brand_tagline.visible = (
+        page.width or page.window.width or 1180
+    ) >= 480
     brand_logo = ft.Image(
-        src=branding.mark_for(theme_controller.current),
-        width=24,
-        height=24,
+        src=branding.logo_for(theme_controller.current),
+        width=121,
+        height=26,
         fit=ft.BoxFit.CONTAIN,
         tooltip=f"{APP_NAME} — {APP_TAGLINE}",
     )
@@ -1685,6 +1700,12 @@ def main(page: ft.Page):
             tooltip="Copiar correo al portapapeles",
         )
         items = [
+            ft.Image(
+                src=branding.logo_for(theme_controller.current),
+                width=158,
+                height=34,
+                fit=ft.BoxFit.CONTAIN,
+            ),
             ft.Text(
                 f"{APP_NAME} — {APP_TAGLINE}",
                 size=16,
@@ -1836,7 +1857,7 @@ def main(page: ft.Page):
         e.control.icon = (
             ft.Icons.LIGHT_MODE if mode == ft.ThemeMode.LIGHT else ft.Icons.DARK_MODE
         )
-        brand_logo.src = branding.mark_for(mode)
+        brand_logo.src = branding.logo_for(mode)
         page.update()
 
     history_state = {"open": False}
@@ -1967,7 +1988,15 @@ def main(page: ft.Page):
         vertical_alignment=ft.CrossAxisAlignment.CENTER,
     )
 
-    count_text = ft.Text("cargando…", size=11, color=MUTED)
+    count_number = ft.Text("…", size=11, color=MUTED, no_wrap=True)
+    count_text = ft.Row(
+        [
+            count_number,
+            ft.Text("series", size=11, color=MUTED, no_wrap=True),
+        ],
+        spacing=4,
+        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+    )
     params_hint = ft.Text(
         "Periodos BCRP: 2024-1 · 2024-01-15", size=11, color=MUTED
     )
@@ -2342,14 +2371,7 @@ def main(page: ft.Page):
                 ft.Row(
                     [
                         brand_logo,
-                        ft.Text(
-                            APP_NAME,
-                            size=18,
-                            weight=ft.FontWeight.W_700,
-                            color=TEXT,
-                        ),
-                        ft.Text(APP_TAGLINE, size=11, color=MUTED),
-                        ft.Container(expand=True),
+                        brand_tagline,
                         count_text,
                     ],
                     spacing=8,
@@ -2464,6 +2486,7 @@ def main(page: ft.Page):
 
     def on_resize(e):
         mobile = (page.width or 0) < 600
+        brand_tagline.visible = (page.width or 0) >= 480
         available = (page.height or page.window.height or 760) - 40
         left_panel.height = 520 if mobile else max(560, available)
         right_panel.height = 620 if mobile else max(560, available)
@@ -2556,7 +2579,7 @@ def main(page: ft.Page):
                 dropdown.options = [ft.dropdown.Option(key="", text="Todos")]
 
         metadata_state["ready"] = True
-        count_text.value = f"{total:,} series"
+        count_number.value = f"{total:,}"
         build_listbox(df_metadata)
         refresh(series_list_view, count_text)
 
