@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "Si usas ANDES en tu investigación o docencia, cita este proyecto."
+title: "ANDES — Open Data Platform"
+abstract: >-
+  Plataforma de acceso, integración, exploración y consulta de estadísticas y
+  datos abiertos del Perú. Integra BCRP, MEF, INEI y portales estadísticos de
+  entidades públicas, con búsqueda avanzada y exportación multiformato.
+authors:
+  - family-names: "Castañeda"
+    given-names: "Enrique"
+    email: "EnriqueCastagneda@protonmail.com"
+version: 2.0.0
+date-released: "2026-11-06"
+license: GPL-3.0-or-later
+repository-code: "https://github.com/EnriqueCastagneda/ANDES"
+url: "https://github.com/EnriqueCastagneda/ANDES"
+keywords:
+  - open data
+  - estadísticas
+  - Perú
+  - BCRP
+  - MEF
+  - INEI
+  - Flet
+  - Python

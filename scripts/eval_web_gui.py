@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evalúa la GUI web de BCRP Downloader contra un servidor Flet en marcha.
+"""Evalúa la GUI web de ANDES contra un servidor Flet en marcha.
 
 Uso:
     andes gui --web --port 8550        # en otra terminal

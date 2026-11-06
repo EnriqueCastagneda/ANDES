@@ -6,7 +6,7 @@ import os
 import sys
 import time
 
-os.environ.setdefault("BCRP_DATA_DIR", "/tmp/bcrpdata")
+os.environ.setdefault("ANDES_DATA_DIR", "/tmp/bcrpdata")
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 

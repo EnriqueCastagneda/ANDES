@@ -55,14 +55,13 @@ dev = [
 ]
 
 [project.scripts]
-bcrp = "andes.cli.main:app"
 andes = "andes.cli.main:app"
 
 [tool.setuptools]
 py-modules = ["app"]
 
 [tool.setuptools.packages.find]
-include = ["andes*", "bcrp_downloader*"]
+include = ["andes*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

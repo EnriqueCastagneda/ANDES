@@ -20,10 +20,6 @@ import requests
 from .paths import DATA_DIR, METADATA_PATH, METADATA_URL
 
 CATALOG_PATH = os.path.join(DATA_DIR, "andes_catalog.sqlite3")
-LEGACY_CATALOG_PATH = os.path.join(DATA_DIR, "bcrp_catalog.sqlite3")
-if not os.path.exists(CATALOG_PATH) and os.path.exists(LEGACY_CATALOG_PATH):
-    # Instalaciones previas: reutiliza el catálogo histórico sin moverlo.
-    CATALOG_PATH = LEGACY_CATALOG_PATH
 CATALOG_MAX_AGE = 24 * 3600  # segundos
 
 _CSV_HEADERS = {

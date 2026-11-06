@@ -138,7 +138,7 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" artifacts/* \
             --generate-notes \
-            --title "BCRP Downloader $GITHUB_REF_NAME"
+            --title "ANDES $GITHUB_REF_NAME"
 
   update-readme:
     name: Update README download links

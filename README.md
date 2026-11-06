@@ -21,9 +21,11 @@ de Transparencia del **MEF**, la población proyectada y el índice temático de
 interfaz de escritorio y web (Flet), CLI (Typer) y servidor **MCP** para agentes
 de IA.
 
+![CI](https://github.com/EnriqueCastagneda/ANDES/actions/workflows/test_and_lint.yml/badge.svg)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Flet](https://img.shields.io/badge/Flet-1.0.5-7c4dff)
 ![License](https://img.shields.io/badge/License-GPLv3-blue)
+![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS%20%7C%20Android%20%7C%20Web-informational)
 ![Brand](https://img.shields.io/badge/ANDES-Open%20Data%20Platform-d8b56d)
 
 ## Identidad
@@ -138,8 +140,6 @@ Para usuarios (entorno aislado, recomienda [pipx](https://pipx.pypa.io/)):
 pipx install andes-open-data
 ```
 
-El paquete de importación es `andes`. Se mantiene el alias `bcrp_downloader`
-(``import bcrp_downloader``) y el comando `bcrp` por compatibilidad.
 
 Para desarrollo:
 
@@ -251,18 +251,26 @@ path = download_series_file("PN00001MM", "2024-1", "2024-12", "csv")
 ## Estructura
 
 ```text
-andes/
+ANDES/
 ├── andes/
-│   ├── core/          # api.py, catalog.py, fetcher.py, metadata.py, portals.py, adapters/, sources.py
+│   ├── core/          # api, catalog, fetcher, metadata, portals, adapters, branding
 │   ├── gui/           # views.py, theme.py
 │   ├── cli/           # main.py (Typer)
 │   └── mcp/           # server.py
-├── tests/             # test_smoke, test_core, test_cli, test_mcp
-├── .github/workflows/ # test_and_lint.yml, build_release.yml
-├── app.py             # entrypoint compatible con Flet
+├── assets/            # logotipo, isotipo, iconos
+├── docs/              # identidad, portales, publicación
+├── fixtures/          # contratos de portales
+├── scripts/           # descubrimiento, eval web, pruebas
+├── tests/
+├── app.py             # entrypoint Flet
 ├── pyproject.toml
-├── requirements.txt
-└── LICENSE
+├── TRADEMARKS.md
+├── CITATION.cff
+├── SECURITY.md
+├── CODE_OF_CONDUCT.md
+├── CHANGELOG.md
+├── LICENSE
+└── README.md
 ```
 
 ## Pruebas y lint
@@ -272,7 +280,8 @@ pytest -q
 ruff check .
 ```
 
-Las pruebas de red usan mocks; no dependen de la disponibilidad del BCRP.
+Las pruebas de red usan mocks; no dependen de la disponibilidad de las
+fuentes externas.
 
 ## CI/CD
 
@@ -287,15 +296,21 @@ Publicar una versión:
 
 ```bash
 git tag -a v2.0.0 -m "ANDES v2.0.0"
-git push origin v1.1.3
+git push origin v2.0.0
 ```
 
-## Datos y API
+## Fuentes de datos
 
-- Catálogo: <https://estadisticas.bcrp.gob.pe/estadisticas/series/metadata>
-- Series: `https://estadisticas.bcrp.gob.pe/estadisticas/series/api/{codigo}/{formato}/{inicio}/{fin}/esp`
+| Fuente | Contenido | Enlace |
+| --- | --- | --- |
+| BCRP | Catálogo y series monetarias, cambiarias y macroeconómicas | <https://estadisticas.bcrp.gob.pe> |
+| MEF | Transferencias y cuadros estadísticos | <https://datosabiertos.mef.gob.pe> |
+| INEI | Población proyectada por distrito e índice temático | <https://www.inei.gob.pe/estadisticas-indice-tematico/> |
+| Gob.pe | 125 portales y servicios estadísticos de 53 entidades | <https://www.gob.pe/busquedas?term=estadisticas> |
 
-La información pertenece al Banco Central de Reserva del Perú.
+Los datos pertenecen a sus instituciones productoras. ANDES reconoce fuente,
+metodología, cobertura, periodo y condiciones de reutilización. No se atribuye
+su propiedad intelectual.
 
 ## Identidad y marca
 
@@ -304,12 +319,38 @@ La identidad visual vive en `andes/core/branding.py` y los recursos en
 colores institucionales. El código se distribuye bajo GPLv3; la marca se rige
 por `TRADEMARKS.md`.
 
+## Citación
+
+Si usas ANDES en investigación o docencia, cita el proyecto. Los metadatos están
+en [`CITATION.cff`](CITATION.cff):
+
+```bibtex
+@software{andes2026,
+  title  = {ANDES — Open Data Platform},
+  author = {Castañeda, Enrique},
+  year   = {2026},
+  url    = {https://github.com/EnriqueCastagneda/ANDES},
+  license = {GPL-3.0-or-later}
+}
+```
+
+## Seguridad
+
+Reporta vulnerabilidades de forma privada según [`SECURITY.md`](SECURITY.md).
+No abras issues públicos con detalles explotables.
+
+## Contribuir
+
+Lee [`CONTRIBUTING.md`](CONTRIBUTING.md) y el
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md). Los cambios se registran en
+[`CHANGELOG.md`](CHANGELOG.md).
+
 ## Licencia
 
 GNU General Public License v3.0. Ver [LICENSE](LICENSE).
 
 ```
-Copyright (C) 2026 BCRP Downloader contributors
+Copyright (C) 2026 ANDES contributors
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software

@@ -1,4 +1,4 @@
-"""Flet user interface for BCRP Downloader."""
+"""Interfaz Flet de ANDES — Open Data Platform."""
 
 from __future__ import annotations
 

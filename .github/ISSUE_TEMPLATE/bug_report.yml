@@ -1,0 +1,44 @@
+name: Reporte de error
+description: Algo no funciona como se espera.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por reportar. No incluyas datos personales ni credenciales.
+  - type: textarea
+    id: description
+    attributes:
+      label: Descripción
+      description: ¿Qué ocurrió y qué esperabas?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducir
+      placeholder: |
+        1. Abrir ANDES
+        2. Seleccionar INEI
+        3. Buscar ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versión de ANDES
+      placeholder: "2.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Plataforma
+      options: [Linux, Windows, macOS, Android, Web]
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Registros o capturas
+      render: shell
