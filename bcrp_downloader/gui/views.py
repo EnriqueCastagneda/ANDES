@@ -1541,7 +1541,7 @@ def main(page: ft.Page):
                         name,
                         size=12,
                         color=ACCENT,
-                        text_align=ft.TextAlign.RIGHT,
+                        text_align=ft.TextAlign.LEFT,
                     ),
                     tooltip=url,
                     on_click=lambda ev, target=url: page.run_task(
@@ -1557,7 +1557,8 @@ def main(page: ft.Page):
                 listing.controls.append(
                     ft.Container(
                         content=ft.Row(
-                            [ft.Container(expand=True), link],
+                            [link],
+                            alignment=ft.MainAxisAlignment.START,
                             vertical_alignment=ft.CrossAxisAlignment.CENTER,
                         ),
                         padding=ft.Padding.symmetric(vertical=2),
