@@ -10,6 +10,7 @@ El CSV oficial usa ISO-8859-1 y separador ``;``.
 from __future__ import annotations
 
 import os
+import re
 import sqlite3
 import time
 from collections.abc import Iterable
@@ -197,9 +198,151 @@ def ensure_catalog(csv_path: str | None = None, db_path: str | None = None,
     return db_path
 
 
+_FIELD_ALIASES = {
+    "codigo": "code",
+    "código": "code",
+    "code": "code",
+    "nombre": "name",
+    "name": "name",
+    "serie": "name",
+    "grupo": "group_name",
+    "group": "group_name",
+    "grupo_serie": "group_name",
+    "categoria": "category",
+    "categoría": "category",
+    "category": "category",
+    "rubro": "category",
+    "unidad": "unit",
+    "unit": "unit",
+}
+
+_OPERATORS = {"AND", "OR", "NOT"}
+_TOKEN_RE = re.compile(r'"(?:[^"\\]|\\.)*"|\(|\)|[^\s()]+')
+
+
+def _simple_fts(text: str) -> str:
+    """Búsqueda tolerante: todos los términos como prefijos unidos por AND."""
+    tokens = [
+        token
+        for token in "".join(
+            char if char.isalnum() else " " for char in text
+        ).split()
+        if token and token.upper() not in _OPERATORS
+    ]
+    return " ".join(f'"{token}"*' for token in tokens)
+
+
+def _quote(value: str) -> str:
+    return '"' + value.replace('"', '""') + '"'
+
+
 def _fts_query(text: str) -> str:
-    tokens = [t for t in "".join(c if c.isalnum() else " " for c in text).split() if t]
-    return " ".join(f'"{t}"*' for t in tokens)
+    """Traduce operadores booleanos a una expresión MATCH de SQLite FTS5.
+
+    Admite ``AND``, ``OR``, ``NOT``, ``-término``, frases entre comillas,
+    paréntesis y prefijos de campo (``nombre:``, ``codigo:``, ``categoria:``,
+    ``grupo:``, ``unidad:``). Si la expresión no es válida, vuelve a la
+    búsqueda simple por prefijos.
+    """
+    if not text or not text.strip():
+        return ""
+    raw = _TOKEN_RE.findall(text)
+    if not raw:
+        return ""
+    parts: list[str] = []
+    operand = False
+    depth = 0
+    index = 0
+
+    def emit(expression: str) -> None:
+        nonlocal operand
+        if operand:
+            parts.append("AND")
+        parts.append(expression)
+        operand = True
+
+    while index < len(raw):
+        token = raw[index]
+        if token == "(":
+            if operand:
+                parts.append("AND")
+            parts.append("(")
+            operand = False
+            depth += 1
+            index += 1
+            continue
+        if token == ")":
+            if not operand or depth == 0:
+                return _simple_fts(text)
+            parts.append(")")
+            operand = True
+            depth -= 1
+            index += 1
+            continue
+
+        upper = token.upper()
+        if upper in _OPERATORS:
+            if upper == "NOT":
+                if not operand:
+                    if parts and parts[-1] == "AND":
+                        parts.pop()
+                    else:
+                        return _simple_fts(text)
+                parts.append("NOT")
+                operand = False
+            else:
+                if not operand:
+                    return _simple_fts(text)
+                parts.append(upper)
+                operand = False
+            index += 1
+            continue
+
+        column = None
+        value = token
+        if ":" in token:
+            prefix, rest = token.split(":", 1)
+            mapped = _FIELD_ALIASES.get(prefix.lower())
+            if mapped:
+                column = mapped
+                value = rest
+                if not value:
+                    index += 1
+                    if index >= len(raw):
+                        return _simple_fts(text)
+                    value = raw[index]
+
+        negative = False
+        if value.startswith("-") and len(value) > 1 and column is None:
+            negative = True
+            value = value[1:]
+
+        if value.startswith('"'):
+            if not (value.endswith('"') and len(value) >= 2):
+                return _simple_fts(text)
+            inner = value[1:-1].replace('\\"', '"').replace('""', '"')
+            if not inner.strip():
+                return _simple_fts(text)
+            expression = _quote(inner)
+        else:
+            term = value.replace("*", "").strip()
+            if not term:
+                return _simple_fts(text)
+            expression = _quote(term) + "*"
+
+        if column:
+            expression = f"{column}:{expression}"
+        if negative:
+            if not operand:
+                return _simple_fts(text)
+            parts.append("NOT")
+            operand = False
+        emit(expression)
+        index += 1
+
+    if depth != 0 or not operand:
+        return _simple_fts(text)
+    return " ".join(parts)
 
 
 def search(
@@ -274,7 +417,15 @@ def search(
         if limit is not None:
             sql += " LIMIT ? OFFSET ?"
             params.extend([limit, offset])
-        return [dict(row) for row in conn.execute(sql, params)]
+        try:
+            return [dict(row) for row in conn.execute(sql, params)]
+        except sqlite3.OperationalError:
+            # Expresión avanzada inválida: reintenta con la búsqueda simple.
+            simple = _simple_fts(query)
+            if not simple or not params:
+                raise
+            params[0] = simple
+            return [dict(row) for row in conn.execute(sql, params)]
     finally:
         conn.close()
 
