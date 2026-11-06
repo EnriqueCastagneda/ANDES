@@ -1,0 +1,27 @@
+{
+  "id": "gobpe",
+  "name": "Portales y servicios estadísticos de Gob.pe",
+  "short_name": "Portales Gob.pe",
+  "base_url": "https://www.gob.pe/busquedas?term=estadisticas",
+  "metadata_url": "https://www.gob.pe/busquedas.json?term=estadisticas",
+  "endpoints": {
+    "busqueda": "https://www.gob.pe/busquedas.json?term=estadisticas&sheet={sheet}"
+  },
+  "period_format": "archivo único",
+  "pagination": "",
+  "dimensions": [
+    {
+      "key": "area",
+      "label": "Entidad",
+      "kind": "select",
+      "options": []
+    },
+    {
+      "key": "categoria",
+      "label": "Plataforma",
+      "kind": "select",
+      "options": []
+    }
+  ],
+  "pending": []
+}

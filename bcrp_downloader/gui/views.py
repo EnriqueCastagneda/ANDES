@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import re
 import time
@@ -12,7 +13,7 @@ import flet as ft
 import pandas as pd
 
 from .. import APP_NAME, APP_VERSION
-from ..core import portals
+from ..core import gobpe, portals
 from ..core.adapters import get_adapter
 from ..core.api import (
     EXPORT_FORMATS,
@@ -239,6 +240,15 @@ def main(page: ft.Page):
     # Servicios: abrir enlaces externos y portapapeles.
     url_launcher = ft.UrlLauncher()
     clipboard = ft.Clipboard()
+
+    async def open_portal(url: str):
+        """Abre un portal externo sin reemplazar la pestaña de la app."""
+        try:
+            await url_launcher.launch_url(
+                url, web_only_window_name="_blank"
+            )
+        except Exception:
+            pass
     try:
         page.services.extend([url_launcher, clipboard])
     except Exception:
@@ -849,7 +859,7 @@ def main(page: ft.Page):
         filters.update(
             {
                 key: widget.value
-                for key, widget in institution_controls().get(institution, {}).items()
+                for key, widget in controls_for(institution).items()
             }
         )
         return filters
@@ -907,6 +917,17 @@ def main(page: ft.Page):
         frequency = info.get("Frecuencia")
         source = get_source(inst_id)
         fixed = bool(source and source.fixed_period)
+        if inst_id.startswith("gobpe:"):
+            try:
+                memo = json.loads(info.get("Memo") or "{}")
+            except ValueError:
+                memo = {}
+            if memo.get("platform") not in gobpe.TABULAR:
+                url = memo.get("url", "")
+                if url and not silent:
+                    page.run_task(open_portal, url)
+                    notify(f"Portal externo: {url}", ft.Colors.BLUE)
+                return None
 
         if fixed:
             if inst_id == "inei":
@@ -1058,90 +1079,117 @@ def main(page: ft.Page):
         ).lower()
 
         def worker():
-            saved = failed = done = 0
+            saved = failed = opened = done = 0
+            try:
+                if fmt == "xls":
+                    for code in codes:
+                        done += 1
+                        progress_text.value = f"Descargando serie {done} de {total}…"
+                        progress_bar.value = done / total if total > 1 else None
+                        refresh(progress_bar, progress_text)
+                        if do_download(code, silent=True):
+                            saved += 1
+                        else:
+                            failed += 1
+                else:
+                    groups: dict[str, list[str]] = {}
+                    for code in codes:
+                        info = series_info(code) or {}
+                        inst = info.get("_institution_id") or ""
+                        if inst and inst != "bcrp":
+                            key = inst
+                        else:
+                            key = info.get("Frecuencia") or ""
+                        groups.setdefault(key, []).append(code)
 
-            if fmt == "xls":
-                for code in codes:
-                    done += 1
-                    progress_text.value = f"Descargando serie {done} de {total}…"
-                    progress_bar.value = done / total if total > 1 else None
-                    refresh(progress_bar, progress_text)
-                    if do_download(code, silent=True):
-                        saved += 1
-                    else:
-                        failed += 1
-            else:
-                groups: dict[str, list[str]] = {}
-                for code in codes:
-                    info = series_info(code) or {}
-                    inst = info.get("_institution_id") or ""
-                    if inst and inst != "bcrp":
-                        key = inst
-                    else:
-                        key = info.get("Frecuencia") or ""
-                    groups.setdefault(key, []).append(code)
+                    for gindex, (key, group) in enumerate(groups.items(), start=1):
+                        progress_text.value = (
+                            f"Lote {gindex} de {len(groups)}: "
+                            f"{len(group)} serie(s)…"
+                        )
+                        refresh(progress_text)
+                        frame = None
+                        if key == "inei_tematico" or key.startswith("gobpe:"):
+                            frame = None  # un archivo por descarga
+                        elif key and key != "bcrp":
+                            try:
+                                frame = get_adapter(key).fetch(group, start, end)
+                            except Exception:
+                                frame = None
+                        elif key:
+                            try:
+                                frame = download_many(group, start, end, key)
+                            except Exception:
+                                frame = None
 
-                for gindex, (key, group) in enumerate(groups.items(), start=1):
-                    progress_text.value = (
-                        f"Lote {gindex} de {len(groups)}: {len(group)} serie(s)…"
-                    )
-                    refresh(progress_text)
-                    frame = None
-                    if key == "inei_tematico":
-                        frame = None  # un archivo por descarga
-                    elif key and key != "bcrp":
-                        try:
-                            frame = get_adapter(key).fetch(group, start, end)
-                        except Exception:
-                            frame = None
-                    elif key:
-                        try:
-                            frame = download_many(group, start, end, key)
-                        except Exception:
-                            frame = None
+                        if frame is None:  # respaldo serie por serie
+                            for code in group:
+                                done += 1
+                                progress_bar.value = (
+                                    done / total if total > 1 else None
+                                )
+                                refresh(progress_bar)
+                                info = series_info(code) or {}
+                                if str(
+                                    info.get("_institution_id", "")
+                                ).startswith("gobpe:"):
+                                    try:
+                                        memo = json.loads(info.get("Memo") or "{}")
+                                    except ValueError:
+                                        memo = {}
+                                    if memo.get("platform") not in gobpe.TABULAR:
+                                        url = memo.get("url", "")
+                                        if url:
+                                            page.run_task(open_portal, url)
+                                            opened += 1
+                                            continue
+                                if do_download(code, silent=True):
+                                    saved += 1
+                                else:
+                                    failed += 1
+                            continue
 
-                    if frame is None:  # respaldo serie por serie
                         for code in group:
+                            column = code.strip().upper()
                             done += 1
                             progress_bar.value = done / total if total > 1 else None
                             refresh(progress_bar)
-                            if do_download(code, silent=True):
-                                saved += 1
-                            else:
+                            if column not in frame.columns:
                                 failed += 1
-                        continue
-
-                    for code in group:
-                        column = code.strip().upper()
-                        done += 1
-                        progress_bar.value = done / total if total > 1 else None
-                        refresh(progress_bar)
-                        if column not in frame.columns:
-                            failed += 1
-                            continue
-                        subset = frame[["fecha", column]].dropna(subset=[column])
-                        if subset.empty:
-                            failed += 1
-                            continue
-                        try:
-                            export_series(subset, code, start, end, fmt)
-                            saved += 1
-                        except Exception:
-                            failed += 1
-
-            download_state["running"] = False
-            download_btn.disabled = False
-            progress_box.visible = False
-            refresh(download_btn, progress_box)
-            if total == 1:
-                msg = "Serie descargada" if saved else "No se pudo descargar la serie"
-                color = ft.Colors.GREEN if saved else ft.Colors.AMBER
-            else:
-                msg = f"Descargadas {saved} series"
-                if failed:
-                    msg += f" ({failed} fallidas)"
-                color = ft.Colors.GREEN if saved else ft.Colors.AMBER
-            notify(msg, color)
+                                continue
+                            subset = frame[["fecha", column]].dropna(
+                                subset=[column]
+                            )
+                            if subset.empty:
+                                failed += 1
+                                continue
+                            try:
+                                export_series(subset, code, start, end, fmt)
+                                saved += 1
+                            except Exception:
+                                failed += 1
+            finally:
+                download_state["running"] = False
+                download_btn.disabled = False
+                progress_box.visible = False
+                refresh(download_btn, progress_box)
+                if total == 1:
+                    if opened:
+                        msg, color = "Portal externo abierto", ft.Colors.BLUE
+                    else:
+                        msg = (
+                            "Serie descargada" if saved
+                            else "No se pudo descargar la serie"
+                        )
+                        color = ft.Colors.GREEN if saved else ft.Colors.AMBER
+                else:
+                    msg = f"Descargadas {saved} series"
+                    if opened:
+                        msg += f" ({opened} portales abiertos)"
+                    if failed:
+                        msg += f" ({failed} fallidas)"
+                    color = ft.Colors.GREEN if saved else ft.Colors.AMBER
+                notify(msg, color)
 
         page.run_thread(worker)
 
@@ -1192,6 +1240,13 @@ def main(page: ft.Page):
             },
         )
 
+    def institution_option(key: str, label: str) -> ft.dropdown.Option:
+        """Opción con globo de nombre completo al pasar el puntero."""
+        source = get_source(key)
+        full = source.name if source else ""
+        tooltip = full if full and full != label else None
+        return ft.dropdown.Option(key=key, text=label, tooltip=tooltip)
+
     institution_dd = ft.Dropdown(
         label="Institución",
         value="",
@@ -1199,10 +1254,12 @@ def main(page: ft.Page):
         filled=True,
         fill_color=SURFACE_2,
         text_size=13,
+        enable_filter=True,
+        menu_height=420,
         label_style=ft.TextStyle(size=12, color=MUTED),
         options=[ft.dropdown.Option(key="", text="Todas")]
         + [
-            ft.dropdown.Option(key=source_id, text=label)
+            institution_option(source_id, label)
             for source_id, label in institution_options()
         ],
         border={
@@ -1240,12 +1297,25 @@ def main(page: ft.Page):
         for dimension in INEI_TEMATICO_DIMENSIONS
     }
 
+    # Filtros propios de los portales de Gob.pe.
+    GOBPE_DIMENSIONS = portals.PORTAL_DIMENSIONS
+    gobpe_controls = {
+        dimension.key: make_adv_dd(dimension.label, dimension.key)
+        for dimension in GOBPE_DIMENSIONS
+    }
+
     def institution_controls() -> dict[str, dict]:
         return {
             "mef": mef_controls,
             "inei": inei_controls,
             "inei_tematico": inei_tematico_controls,
+            "gobpe": gobpe_controls,
         }
+
+    def controls_for(institution: str) -> dict:
+        if institution.startswith("gobpe:"):
+            return gobpe_controls
+        return institution_controls().get(institution, {})
 
     def clear_filters(e):
         for dd in (adv_area, adv_fuente, adv_categoria, adv_grupo):
@@ -1255,6 +1325,8 @@ def main(page: ft.Page):
         for dd in inei_controls.values():
             dd.value = ""
         for dd in inei_tematico_controls.values():
+            dd.value = ""
+        for dd in gobpe_controls.values():
             dd.value = ""
         for dc in (filtro_creacion_desde, filtro_creacion_hasta, filtro_actual_desde, filtro_actual_hasta):
             dc.controls[0].value = ""
@@ -1354,7 +1426,7 @@ def main(page: ft.Page):
                 if (control.controls[0].value or "").strip():
                     return True
             return False
-        controls = institution_controls().get(institution, {})
+        controls = controls_for(institution)
         return any((dd.value or "").strip() for dd in controls.values())
 
     def update_master_state():
@@ -1779,6 +1851,27 @@ def main(page: ft.Page):
         visible=False,
     )
 
+    gobpe_grid = ft.ResponsiveRow(
+        list(gobpe_controls.values()),
+        spacing=10,
+        run_spacing=10,
+    )
+    for ctrl in gobpe_grid.controls:
+        ctrl.col = {"xs": 12, "sm": 6}
+
+    gobpe_section = ft.Column(
+        [
+            ft.Text("Filtros de portales de Gob.pe", size=11, color=MUTED),
+            gobpe_grid,
+            ft.Row(
+                [ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED))],
+                spacing=4,
+            ),
+        ],
+        spacing=10,
+        visible=False,
+    )
+
     bcrp_section = ft.Column(
         [frequency_box, advanced_panel],
         spacing=10,
@@ -1787,7 +1880,13 @@ def main(page: ft.Page):
 
     filters_ui = {"open": False}
     filters_host = ft.Column(
-        [bcrp_section, mef_section, inei_section, inei_tematico_section],
+        [
+            bcrp_section,
+            mef_section,
+            inei_section,
+            inei_tematico_section,
+            gobpe_section,
+        ],
         spacing=10,
         visible=False,
     )
@@ -1840,22 +1939,29 @@ def main(page: ft.Page):
 
     def reload_dimension_options(source_id: str):
         """Repuebla los filtros de una institución tras indexar en vivo."""
-        dimensions = {
-            "mef": MEF_DIMENSIONS,
-            "inei": INEI_DIMENSIONS,
-            "inei_tematico": INEI_TEMATICO_DIMENSIONS,
-        }.get(source_id, ())
-        controls = institution_controls().get(source_id, {})
-        for dimension in dimensions:
-            dropdown = controls.get(dimension.key)
-            if dropdown is None:
-                continue
-            field = portals.catalog_field(dimension.key)
-            dropdown.options = [ft.dropdown.Option(key="", text="Todos")] + [
-                ft.dropdown.Option(key=value, text=value)
-                for value in institution_filter_options(source_id, field)
-            ]
-            refresh(dropdown)
+        if source_id.startswith("gobpe:"):
+            dimensions = GOBPE_DIMENSIONS
+            controls = gobpe_controls
+        else:
+            dimensions = {
+                "mef": MEF_DIMENSIONS,
+                "inei": INEI_DIMENSIONS,
+                "inei_tematico": INEI_TEMATICO_DIMENSIONS,
+            }.get(source_id, ())
+            controls = institution_controls().get(source_id, {})
+        try:
+            for dimension in dimensions:
+                dropdown = controls.get(dimension.key)
+                if dropdown is None:
+                    continue
+                field = portals.catalog_field(dimension.key)
+                dropdown.options = [ft.dropdown.Option(key="", text="Todos")] + [
+                    ft.dropdown.Option(key=value, text=value)
+                    for value in institution_filter_options(source_id, field)
+                ]
+                refresh(dropdown)
+        except Exception:
+            return
 
     def on_institution_change(e):
         institution = institution_dd.value or ""
@@ -1865,6 +1971,7 @@ def main(page: ft.Page):
         mef_section.visible = institution == "mef"
         inei_section.visible = institution == "inei"
         inei_tematico_section.visible = institution == "inei_tematico"
+        gobpe_section.visible = institution.startswith("gobpe:")
         if institution != "bcrp":
             set_frequency("Todos", repaint=False)
         filters_ui["open"] = False
@@ -1901,6 +2008,8 @@ def main(page: ft.Page):
             params_hint.value = "INEI: archivo único 2018-2026 (sin filtro de fechas)"
         elif institution == "inei_tematico":
             params_hint.value = "INEI Temático: archivo único (sin filtro de fechas)"
+        elif institution.startswith("gobpe:"):
+            params_hint.value = "Portal institucional: enlace único (sin fechas)"
         else:
             start_input.tooltip = "Elige una institución"
             end_input.tooltip = "Elige una institución"
@@ -2059,7 +2168,7 @@ def main(page: ft.Page):
         try:
             total = catalog_count()
             institution_dd.options = [ft.dropdown.Option(key="", text="Todas")] + [
-                ft.dropdown.Option(key=source_id, text=label)
+                institution_option(source_id, label)
                 for source_id, label in catalog_institutions()
             ]
             for dropdown, field in (
@@ -2093,6 +2202,13 @@ def main(page: ft.Page):
                     ft.dropdown.Option(key=value, text=value)
                     for value in institution_filter_options("inei_tematico", field)
                 ]
+            for dimension in GOBPE_DIMENSIONS:
+                dropdown = gobpe_controls[dimension.key]
+                field = portals.catalog_field(dimension.key)
+                dropdown.options = [ft.dropdown.Option(key="", text="Todos")] + [
+                    ft.dropdown.Option(key=value, text=value)
+                    for value in institution_filter_options("gobpe", field)
+                ]
             df_metadata = search_catalog("", limit=300)
         except Exception as ex:
             notify(f"Catálogo rápido no disponible: {ex}", ft.Colors.AMBER)
@@ -2104,7 +2220,7 @@ def main(page: ft.Page):
             total = len(legacy)
             df_metadata = legacy.head(300)
             institution_dd.options = [ft.dropdown.Option(key="", text="Todas")] + [
-                ft.dropdown.Option(key=source_id, text=label)
+                institution_option(source_id, label)
                 for source_id, label in institution_options()
             ]
             for dropdown, column in (
@@ -2122,6 +2238,8 @@ def main(page: ft.Page):
             for dropdown in inei_controls.values():
                 dropdown.options = [ft.dropdown.Option(key="", text="Todos")]
             for dropdown in inei_tematico_controls.values():
+                dropdown.options = [ft.dropdown.Option(key="", text="Todos")]
+            for dropdown in gobpe_controls.values():
                 dropdown.options = [ft.dropdown.Option(key="", text="Todos")]
 
         metadata_state["ready"] = True

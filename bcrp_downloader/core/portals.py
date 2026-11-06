@@ -41,6 +41,11 @@ class PortalSpec:
     pending: tuple[str, ...] = ()
 
 
+PORTAL_DIMENSIONS: tuple[Dimension, ...] = (
+    Dimension(key="categoria", label="Plataforma"),
+)
+
+
 def _dim(key: str, label: str, kind: str = "select") -> Dimension:
     return Dimension(key=key, label=label, kind=kind)
 
@@ -69,6 +74,10 @@ _DIMENSIONS: dict[str, tuple[Dimension, ...]] = {
     "inei_tematico": (
         _dim("categoria", "Categoría temática"),
     ),
+    "gobpe": (
+        _dim("area", "Entidad"),
+        _dim("categoria", "Plataforma"),
+    ),
 }
 
 _ENDPOINTS: dict[str, dict[str, str]] = {
@@ -83,6 +92,9 @@ _ENDPOINTS: dict[str, dict[str, str]] = {
     "inei_tematico": {
         "indice": "https://www.inei.gob.pe/estadisticas-indice-tematico/",
     },
+    "gobpe": {
+        "busqueda": "https://www.gob.pe/busquedas.json?term=estadisticas&sheet={sheet}",
+    },
 }
 
 _PERIODS = {
@@ -90,8 +102,9 @@ _PERIODS = {
     "mef": "2026",
     "inei": "2018-2026",
     "inei_tematico": "archivo único",
+    "gobpe": "archivo único",
 }
-_PENDING = {"bcrp": (), "mef": (), "inei": (), "inei_tematico": ()}
+_PENDING = {"bcrp": (), "mef": (), "inei": (), "inei_tematico": (), "gobpe": ()}
 
 # Clave de filtro de la GUI -> columna/campo del catálogo.
 _SEED_KEYS = {
@@ -110,7 +123,9 @@ def spec_for(source_id: str) -> PortalSpec:
     source = sources.get_source(source_id)
     if source is None:
         raise ValueError(f"Portal no registrado: {source_id}")
-    dimensions = _DIMENSIONS.get(source.id, ())
+    dimensions = _DIMENSIONS.get(source.id)
+    if dimensions is None and source.id.startswith("gobpe:"):
+        dimensions = PORTAL_DIMENSIONS
     if source.filter_options:
         dimensions = tuple(
             Dimension(
@@ -138,8 +153,8 @@ def spec_for(source_id: str) -> PortalSpec:
 
 
 def specs() -> list[PortalSpec]:
-    """Especificaciones de todas las instituciones habilitadas."""
-    return [spec_for(source.id) for source in sources.sources()]
+    """Especificaciones de las instituciones base (sin portales generados)."""
+    return [spec_for(source.id) for source in sources.declared()]
 
 
 def catalog_field(key: str) -> str:

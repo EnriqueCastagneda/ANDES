@@ -173,10 +173,22 @@ class IneiTematicoAdapter:
         return data
 
     # ------------------------------------------------------------------ #
+    def _cache_stale(self) -> bool:
+        if not os.path.exists(INDEX_CACHE):
+            return True
+        try:
+            with open(INDEX_CACHE, encoding="utf-8") as handle:
+                generated = json.load(handle).get("generated", 0)
+        except (ValueError, OSError):
+            return True
+        return time.time() - generated >= _INDEX_TTL
+
     def _ensure_indexed(self, force: bool = False) -> int:
         has_rows = catalog.count_prefix("INEI-TEM", "inei_tematico") > 0
-        data = self._load_index(force=force or not has_rows)
-        if has_rows and not force:
+        if has_rows and not force and not self._cache_stale():
+            return 0
+        data = self._load_index(force=True)
+        if has_rows and not force and not data.get("files"):
             return 0
         catalog.clear_institution("inei_tematico")
         rows: list[dict] = []

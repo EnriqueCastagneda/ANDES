@@ -118,3 +118,23 @@ def test_inei_exports_all_formats(tmp_path, monkeypatch):
             assert "<table" in open(path, encoding="utf-8").read()
         else:
             assert len(open(path, encoding="utf-8-sig").read().splitlines()) == 3
+
+
+def test_xml_export_sanitizes_numeric_columns():
+    import xml.etree.ElementTree as ET
+
+    from bcrp_downloader.core.api import _dataframe_to_xml
+
+    frame = pd.concat(
+        [
+            pd.Series(["2020-01-01"], name="fecha"),
+            pd.Series([1.5], name="2015"),
+            pd.Series([2.0], name="2015"),
+            pd.Series([3], name="a b"),
+        ],
+        axis=1,
+    )
+    root = ET.fromstring(_dataframe_to_xml(frame))
+    tags = [child.tag for child in root[0]]
+    assert tags[1] == "col_2015"
+    assert len(tags) == len(set(tags))
