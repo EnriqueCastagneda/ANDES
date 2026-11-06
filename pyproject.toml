@@ -42,7 +42,7 @@ Issues = "https://github.com/EnriqueCastagneda/ANDES/issues"
 
 [project.optional-dependencies]
 mcp = ["mcp>=1.2"]
-dev = ["pytest>=8.0", "ruff>=0.5", "build>=1.0", "websocket-client>=1.7"]
+dev = ["pytest>=8.0", "ruff>=0.5", "build>=1.0", "websocket-client>=1.7", "pillow>=10"]
 all = ["mcp>=1.2"]
 
 [dependency-groups]
@@ -52,6 +52,7 @@ dev = [
     "ruff>=0.5",
     "build>=1.0",
     "websocket-client>=1.7",
+    "pillow>=10",
 ]
 
 [project.scripts]
@@ -83,3 +84,4 @@ org = "com.andesplatform"
 company = "ANDES contributors"
 copyright = "Copyright (C) 2026 ANDES contributors"
 build_number = 1
+icon = "assets/icon/andes_icono_512.png"

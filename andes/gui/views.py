@@ -37,7 +37,7 @@ from ..core.metadata import (
     search_catalog,
     series_info,
 )
-from ..core.paths import DATA_DIR, OUTPUT_DIR
+from ..core.paths import ASSETS_DIR, DATA_DIR, OUTPUT_DIR
 from ..core.sources import get_source
 from .theme import ThemeController
 
@@ -61,7 +61,9 @@ def main(page: ft.Page):
 
     page.title = f"{APP_NAME} — {APP_TAGLINE}"
     try:
-        page.window.icon = branding.ASSETS["icon"]
+        page.window.icon = str(
+            os.path.join(ASSETS_DIR, branding.ASSETS["icon"])
+        )
     except Exception:
         pass
     page.bgcolor = BG

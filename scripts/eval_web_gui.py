@@ -267,6 +267,8 @@ def main() -> int:
                 text.strip().replace(",", "").isdigit() for text in texts
             ):
                 break
+        texts = browser.texts()
+        joined = " ".join(texts).upper()
         check("render inicial", bool(texts), f"{len(texts)} nodos semánticos")
         check("marca ANDES", "ACERCA DE ANDES" in joined
               and "OPEN DATA PLATFORM" in joined)
