@@ -1820,11 +1820,21 @@ def main(page: ft.Page):
                 color=MUTED,
             ),
             ft.Divider(height=12, thickness=1, color=BORDER),
-            ft.Text(
-                f"Repositorio: {branding.REPOSITORY_URL}",
-                size=11,
-                color=MUTED,
-                selectable=True,
+            ft.TextButton(
+                content=ft.Text(
+                    "Repositorio: "
+                    + branding.REPOSITORY_URL.replace("https://", ""),
+                    size=11,
+                    color=ACCENT,
+                ),
+                tooltip=f"Abrir {branding.REPOSITORY_URL}",
+                on_click=lambda e: page.run_task(
+                    open_portal, branding.REPOSITORY_URL
+                ),
+                style=ft.ButtonStyle(
+                    padding=ft.Padding.symmetric(horizontal=0, vertical=0),
+                    overlay_color=ft.Colors.with_opacity(0.08, ACCENT),
+                ),
             ),
             ft.Text(
                 f"Licencia del software: {branding.LICENSE_NAME}",
