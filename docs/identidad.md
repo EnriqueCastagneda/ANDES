@@ -72,6 +72,10 @@ sigue la hora local (claro 06:00–17:59).
   aplicar además el icono y el color del sistema; se documenta como límite del
   runtime.
 - Favicon: `assets/favicon.png`.
+- `assets/index.html` personaliza título, `theme-color`, fondo de carga y la URL
+  versionada `favicon.png?v=2` para vencer la caché del navegador. Conserva los
+  marcadores de Flet (`<!-- fletAppConfig -->`, `<base>`); revísalo al actualizar
+  Flet.
 
 ## Accesibilidad
 
