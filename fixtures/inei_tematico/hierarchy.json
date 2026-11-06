@@ -1,0 +1,21 @@
+{
+  "id": "inei_tematico",
+  "name": "Instituto Nacional de Estadística e Informática - Índice temático",
+  "short_name": "INEI Temático",
+  "base_url": "https://www.inei.gob.pe/estadisticas-indice-tematico/",
+  "metadata_url": "https://www.inei.gob.pe/estadisticas-indice-tematico/",
+  "endpoints": {
+    "indice": "https://www.inei.gob.pe/estadisticas-indice-tematico/"
+  },
+  "period_format": "archivo único",
+  "pagination": "",
+  "dimensions": [
+    {
+      "key": "categoria",
+      "label": "Categoría temática",
+      "kind": "select",
+      "options": []
+    }
+  ],
+  "pending": []
+}

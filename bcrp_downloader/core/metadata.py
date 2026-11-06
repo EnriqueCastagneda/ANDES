@@ -201,6 +201,7 @@ def series_info(code: str) -> dict | None:
         if field in row
     }
     info["Institución"] = sources.labels().get(row.get("institution", ""), row.get("institution", ""))
+    info["_institution_id"] = row.get("institution", "")
     return info
 
 

@@ -412,20 +412,31 @@ def main() -> int:
             check("MEF histórico completo", len(rows) > 150, f"{len(rows)} filas")
         browser.shot("08-mef-descarga.png")
 
-        # 8b. institución INEI: población distrital
+        # 8b. INEI Población Proyectada: fechas bloqueadas, formato XLS
         browser.click_at({"x": 146, "y": 190})
         time.sleep(0.6)
-        browser.click_at({"x": 146, "y": 390})  # opción INEI
+        browser.click_at({"x": 146, "y": 390})
         time.sleep(1.2)
-        texts = " ".join(browser.texts()).upper()
-        check("INEI listado como institución", "INEI" in texts)
-        browser.click_at({"x": 328, "y": 190})  # desplegar filtros INEI
+        texts = ""
+        deadline = time.time() + 15
+        while time.time() < deadline:
+            texts = " ".join(browser.texts()).upper()
+            if "INEI: ARCHIVO ÚNICO" in texts:
+                break
+            time.sleep(0.5)
+        check("INEI población listado", "INEI: ARCHIVO ÚNICO" in texts)
+        browser.click_at({"x": 328, "y": 190})
         time.sleep(1.0)
         texts = " ".join(browser.texts()).upper()
-        check("panel INEI visible", "FILTROS DE INEI" in texts)
+        check("panel INEI población visible", "FILTROS DE INEI" in texts)
         browser.shot("09-inei-panel.png")
-        browser.click_at({"x": 328, "y": 190})  # plegar para ver la lista
+        browser.click_at({"x": 328, "y": 190})
         time.sleep(0.8)
+        blocked = browser.js(
+            "JSON.stringify([...document.querySelectorAll('input')]"
+            ".map(i => ({l: i.getAttribute('aria-label'), d: i.disabled})))"
+        )
+        check("INEI bloquea fechas", '"d":true' in (blocked or ""))
 
         browser.js("document.querySelector('input')?.focus()")
         browser.cmd("Input.dispatchKeyEvent", {
@@ -458,9 +469,6 @@ def main() -> int:
         )
         time.sleep(0.5)
         browser.shot("09b-inei-resultados.png")
-
-        check("fecha INEI inicio", browser.type_into("Fecha inicio", "2018"))
-        check("fecha INEI fin", browser.type_into("Fecha fin", "2026"))
         check("descargar INEI", browser.click_semantics("Descargar"))
         deadline = time.time() + 60
         inei_files: list[str] = []
@@ -473,13 +481,52 @@ def main() -> int:
                 break
             time.sleep(1)
         check("archivo INEI generado", bool(inei_files), ", ".join(inei_files))
-        if inei_files:
-            rows = (outputs / inei_files[0]).read_text(encoding="utf-8-sig").splitlines()
-            check("INEI histórico completo", len(rows) == 10, f"{len(rows)} filas")
+        check(
+            "INEI formato XLS fijo",
+            bool(inei_files) and inei_files[0].endswith(".xls"),
+            inei_files[0] if inei_files else "",
+        )
         browser.shot("09c-inei-descarga.png")
 
-        browser.click_at({"x": 190, "y": 130})
-        time.sleep(0.4)
+        # 8c. INEI Temático: archivo único, formato CSV
+        browser.click_at({"x": 146, "y": 190})
+        time.sleep(0.6)
+        browser.click_at({"x": 146, "y": 438})
+        time.sleep(1.5)
+        texts = " ".join(browser.texts()).upper()
+        check("INEI temático listado", "INEI TEMÁTICO" in texts)
+        browser.click_at({"x": 328, "y": 190})
+        time.sleep(1.0)
+        texts = " ".join(browser.texts()).upper()
+        check("panel INEI temático visible", "ÍNDICE TEMÁTICO" in texts)
+        browser.shot("09d-inei-tematico.png")
+        browser.click_at({"x": 105, "y": 271})
+        time.sleep(1.0)
+        texts = " ".join(browser.texts()).upper()
+        check(
+            "INEI temático categorías dinámicas",
+            "ECONOMÍA" in texts and "SEGURIDAD CIUDADANA" in texts,
+        )
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "rawKeyDown", "key": "Escape", "code": "Escape",
+            "windowsVirtualKeyCode": 27,
+        })
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "keyUp", "key": "Escape", "code": "Escape",
+            "windowsVirtualKeyCode": 27,
+        })
+        time.sleep(0.6)
+        browser.click_semantics("Limpiar")
+        time.sleep(0.8)
+        browser.click_at({"x": 328, "y": 190})
+        time.sleep(0.8)
+        blocked = browser.js(
+            "JSON.stringify([...document.querySelectorAll('input')]"
+            ".map(i => ({l: i.getAttribute('aria-label'), d: i.disabled})))"
+        )
+        check("INEI temático bloquea fechas", '"d":true' in (blocked or ""))
+
+        browser.js("document.querySelector('input')?.focus()")
         browser.cmd("Input.dispatchKeyEvent", {
             "type": "rawKeyDown", "key": "a", "code": "KeyA",
             "windowsVirtualKeyCode": 65, "modifiers": 2,
@@ -495,8 +542,42 @@ def main() -> int:
         browser.cmd("Input.dispatchKeyEvent", {
             "type": "keyUp", "key": "Backspace", "windowsVirtualKeyCode": 8,
         })
-        browser.cmd("Input.insertText", {"text": "tipo de cambio"})
-        time.sleep(1.0)
+        browser.cmd("Input.insertText", {"text": "desempleo"})
+        labels = ""
+        deadline = time.time() + 25
+        while time.time() < deadline:
+            labels = " ".join(browser.labels()).upper()
+            if "INEI-TEM-" in labels:
+                break
+            time.sleep(0.5)
+        check("INEI temático devuelve archivos", "INEI-TEM-" in labels)
+        check(
+            "INEI temático selecciona archivo",
+            browser.click_label("Seleccionar serie\nINEI-TEM-"),
+        )
+        time.sleep(0.5)
+        browser.shot("09e-inei-tematico-resultados.png")
+        check("descargar INEI temático", browser.click_semantics("Descargar"))
+        deadline = time.time() + 90
+        tem_files: list[str] = []
+        while time.time() < deadline:
+            tem_files = [
+                name for name in os.listdir(outputs)
+                if "INEI-TEM-" in name and (outputs / name).stat().st_mtime >= started - 1
+            ]
+            if tem_files:
+                break
+            time.sleep(1)
+        check("archivo INEI temático generado", bool(tem_files), ", ".join(tem_files))
+        check(
+            "INEI temático formato CSV fijo",
+            bool(tem_files) and tem_files[0].endswith(".csv"),
+            tem_files[0] if tem_files else "",
+        )
+        if tem_files:
+            rows = (outputs / tem_files[0]).read_text(encoding="utf-8-sig").splitlines()
+            check("INEI temático con datos", len(rows) > 5, f"{len(rows)} filas")
+        browser.shot("09f-inei-tematico-descarga.png")
 
         # 8. volver a BCRP para descargar
         browser.click_at({"x": 146, "y": 190})
@@ -562,8 +643,9 @@ def main() -> int:
         browser.shot("10-descarga.png")
         check("3 archivos descargados", len(nuevos) >= 3, ", ".join(nuevos))
 
-        if nuevos:
-            sample = (outputs / nuevos[0]).read_text(encoding="utf-8-sig").splitlines()
+        csvs = [name for name in nuevos if name.endswith(".csv")]
+        if csvs:
+            sample = (outputs / csvs[0]).read_text(encoding="utf-8-sig").splitlines()
             check("CSV con encabezado y datos", len(sample) >= 2, sample[0] if sample else "")
 
         # 7. sin errores de consola

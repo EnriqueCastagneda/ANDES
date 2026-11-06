@@ -51,7 +51,7 @@ def test_fixtures_match_declared_specs():
 
 
 def test_adapters_registered():
-    assert {"bcrp", "mef", "inei"} <= set(adapters.registered())
+    assert {"bcrp", "mef", "inei", "inei_tematico"} <= set(adapters.registered())
 
 
 class _Response:
