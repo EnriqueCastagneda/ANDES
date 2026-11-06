@@ -5,8 +5,8 @@ import json
 
 import openpyxl
 
-from bcrp_downloader.core.adapters import get_adapter
-from bcrp_downloader.core.adapters.inei_tematico import IneiTematicoAdapter
+from andes.core.adapters import get_adapter
+from andes.core.adapters.inei_tematico import IneiTematicoAdapter
 
 INDEX_HTML = """
 <html><body>
@@ -93,7 +93,7 @@ def test_fetch_reads_indexed_file(monkeypatch, tmp_path):
 
     adapter = IneiTematicoAdapter()
     monkeypatch.setattr(
-        "bcrp_downloader.core.adapters.inei_tematico.catalog.get",
+        "andes.core.adapters.inei_tematico.catalog.get",
         lambda code: {
             "code": code,
             "name": "Producto Bruto Interno",

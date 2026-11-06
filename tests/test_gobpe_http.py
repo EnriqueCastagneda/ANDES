@@ -9,7 +9,7 @@ import pytest
 import requests
 from openpyxl import Workbook
 
-from bcrp_downloader.core.adapters import gobpe as gobpe_adapter
+from andes.core.adapters import gobpe as gobpe_adapter
 
 
 class _Response:

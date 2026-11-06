@@ -42,9 +42,9 @@ def probe(url: str) -> dict:
 
 
 def main() -> int:
-    from bcrp_downloader.core import gobpe
-    from bcrp_downloader.core.adapters import get_adapter
-    from bcrp_downloader.core.api import export_series
+    from andes.core import gobpe
+    from andes.core.adapters import get_adapter
+    from andes.core.api import export_series
 
     portals = gobpe.load_registry()
     if not portals:

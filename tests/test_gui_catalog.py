@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from bcrp_downloader.core import catalog
-from bcrp_downloader.gui import views
+from andes.core import catalog
+from andes.gui import views
 
 CSV = (
     "Código de serie;Categoría de serie;Grupo de serie;Nombre de serie;"

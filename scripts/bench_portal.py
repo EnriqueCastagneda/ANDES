@@ -10,7 +10,7 @@ os.environ.setdefault("BCRP_DATA_DIR", "/tmp/bcrpdata")
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from bcrp_downloader.core import catalog, fetcher  # noqa: E402
+from andes.core import catalog, fetcher  # noqa: E402
 
 CODES = [f"PN{i:05d}MM" for i in range(1, 21)]
 START, END, FREQ = "2024-1", "2024-12", "Mensual"
@@ -36,7 +36,7 @@ def bench_catalog():
 
 
 def bench_legacy():
-    from bcrp_downloader.core.api import download_series_data
+    from andes.core.api import download_series_data
 
     done = 0
     t0 = time.perf_counter()

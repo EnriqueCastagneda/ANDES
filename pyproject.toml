@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "bcrp-downloader"
+name = "andes-open-data"
 version = "2.0.0"
 description = "ANDES — Open Data Platform: acceso, integración y descarga de estadísticas y datos abiertos del Perú."
 readme = "README.md"
@@ -55,14 +55,14 @@ dev = [
 ]
 
 [project.scripts]
-bcrp = "bcrp_downloader.cli.main:app"
-andes = "bcrp_downloader.cli.main:app"
+bcrp = "andes.cli.main:app"
+andes = "andes.cli.main:app"
 
 [tool.setuptools]
 py-modules = ["app"]
 
 [tool.setuptools.packages.find]
-include = ["bcrp_downloader*"]
+include = ["andes*", "bcrp_downloader*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -78,9 +78,9 @@ ignore = ["E501", "B008"]
 
 [tool.flet]
 app.module = "app"
-product = "BCRP Downloader"
-artifact = "bcrp-downloader"
-org = "com.bcrpdownloader"
-company = "BCRP Downloader contributors"
-copyright = "Copyright (C) 2026 BCRP Downloader contributors"
+product = "ANDES"
+artifact = "andes"
+org = "com.andesplatform"
+company = "ANDES contributors"
+copyright = "Copyright (C) 2026 ANDES contributors"
 build_number = 1

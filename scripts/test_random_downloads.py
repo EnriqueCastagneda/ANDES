@@ -84,10 +84,10 @@ def main() -> int:
     parser.add_argument("--per", type=int, default=4, help="series por institución")
     args = parser.parse_args()
 
-    from bcrp_downloader.core import catalog
-    from bcrp_downloader.core.adapters import get_adapter
-    from bcrp_downloader.core.api import export_series
-    from bcrp_downloader.core.sources import sources
+    from andes.core import catalog
+    from andes.core.adapters import get_adapter
+    from andes.core.api import export_series
+    from andes.core.sources import sources
 
     rng = random.Random(args.seed)
     db = catalog.ensure_catalog()

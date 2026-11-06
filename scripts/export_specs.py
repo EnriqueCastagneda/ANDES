@@ -11,7 +11,7 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from bcrp_downloader.core import portals
+from andes.core import portals
 
 ROOT = Path(__file__).resolve().parent.parent / "fixtures"
 

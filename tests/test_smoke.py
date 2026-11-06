@@ -8,21 +8,21 @@ import os
 import pytest
 from typer.testing import CliRunner
 
-from bcrp_downloader.cli.main import app
-from bcrp_downloader.core.paths import METADATA_PATH
+from andes.cli.main import app
+from andes.core.paths import METADATA_PATH
 
 
 @pytest.mark.parametrize(
     "module",
     [
-        "bcrp_downloader",
-        "bcrp_downloader.core.api",
-        "bcrp_downloader.core.http",
-        "bcrp_downloader.core.metadata",
-        "bcrp_downloader.core.paths",
-        "bcrp_downloader.gui.theme",
-        "bcrp_downloader.cli.main",
-        "bcrp_downloader.mcp.server",
+        "andes",
+        "andes.core.api",
+        "andes.core.http",
+        "andes.core.metadata",
+        "andes.core.paths",
+        "andes.gui.theme",
+        "andes.cli.main",
+        "andes.mcp.server",
         "app",
     ],
 )
@@ -50,7 +50,7 @@ def test_cli_help() -> None:
 
 
 def test_mcp_server_loads() -> None:
-    from bcrp_downloader.mcp.server import server
+    from andes.mcp.server import server
 
     if server is None:
         pytest.skip("optional 'mcp' dependency not installed")

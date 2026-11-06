@@ -5,9 +5,9 @@ import json
 
 import pandas as pd
 
-from bcrp_downloader.core import gobpe
-from bcrp_downloader.core.adapters.gobpe import GobpeAdapter
-from bcrp_downloader.core.gobpe import infer_institution
+from andes.core import gobpe
+from andes.core.adapters.gobpe import GobpeAdapter
+from andes.core.gobpe import infer_institution
 
 
 def test_classify_platforms():
@@ -72,7 +72,7 @@ def test_parse_json_records(tmp_path):
 def test_non_tabular_portal_returns_empty(monkeypatch, tmp_path):
     adapter = GobpeAdapter()
     monkeypatch.setattr(
-        "bcrp_downloader.core.adapters.gobpe.catalog.get",
+        "andes.core.adapters.gobpe.catalog.get",
         lambda code: {
             "code": code,
             "name": "Tablero",

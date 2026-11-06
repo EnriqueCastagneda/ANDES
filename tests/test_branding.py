@@ -5,10 +5,10 @@ import json
 
 import flet as ft
 
-from bcrp_downloader import APP_NAME, APP_TAGLINE, APP_VERSION
-from bcrp_downloader.core import branding
-from bcrp_downloader.gui import theme as theme_module
-from bcrp_downloader.gui.theme import ThemeController, resolve_theme
+from andes import APP_NAME, APP_TAGLINE, APP_VERSION
+from andes.core import branding
+from andes.gui import theme as theme_module
+from andes.gui.theme import ThemeController, resolve_theme
 
 
 class _FakePage:

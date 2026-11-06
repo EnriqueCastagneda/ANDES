@@ -9,9 +9,9 @@ from datetime import datetime
 import pandas as pd
 import pytest
 
-from bcrp_downloader.core import api, http
-from bcrp_downloader.core.metadata import filter_metadata
-from bcrp_downloader.gui.theme import resolve_theme
+from andes.core import api, http
+from andes.core.metadata import filter_metadata
+from andes.gui.theme import resolve_theme
 
 
 class TestFilters:

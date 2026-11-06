@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from bcrp_downloader.core import catalog, fetcher
+from andes.core import catalog, fetcher
 
 CSV = (
     "Código de serie;Categoría de serie;Grupo de serie;Nombre de serie;"

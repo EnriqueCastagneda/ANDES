@@ -83,11 +83,11 @@ jobs:
           mkdir -p artifact
           if [[ "${{ matrix.target }}" == "linux" ]]; then EXT=".tar.gz"; else EXT=".zip"; fi
           cp "${{ steps.build.outputs.archive-path }}" \
-             "artifact/bcrp-downloader-${{ matrix.target }}-${{ steps.version.outputs.version }}${EXT}"
+             "artifact/andes-${{ matrix.target }}-${{ steps.version.outputs.version }}${EXT}"
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: bcrp-downloader-${{ matrix.target }}
+          name: andes-${{ matrix.target }}
           path: artifact/*
           if-no-files-found: error
           retention-days: 14

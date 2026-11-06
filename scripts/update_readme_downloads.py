@@ -31,7 +31,7 @@ def build_section(repo: str, tag: str) -> str:
         "| --- | --- |",
     ]
     for label, target, ext in TARGETS:
-        name = f"bcrp-downloader-{target}-{version}{ext}"
+        name = f"andes-{target}-{version}{ext}"
         lines.append(f"| {label} | [{name}]({base}/download/{tag}/{name}) |")
     lines += [
         "",

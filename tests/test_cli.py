@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 from typer.testing import CliRunner
 
-import bcrp_downloader.cli.main as cli
+import andes.cli.main as cli
 
 runner = CliRunner()
 

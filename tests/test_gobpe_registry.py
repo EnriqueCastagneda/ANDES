@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from bcrp_downloader.core import gobpe
+from andes.core import gobpe
 
 REGISTRY = gobpe.REGISTRY_PATH
 

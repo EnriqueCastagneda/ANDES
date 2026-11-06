@@ -44,7 +44,7 @@ def main() -> int:
     args = parser.parse_args()
 
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from bcrp_downloader.core import gobpe
+    from andes.core import gobpe
 
     portals = gobpe.load_registry(args.registry)
     if not portals:

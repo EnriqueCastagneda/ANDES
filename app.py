@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import flet as ft
 
-from bcrp_downloader.core.paths import ASSETS_DIR
-from bcrp_downloader.gui.views import main
-from bcrp_downloader.runtime import (
+from andes.core.paths import ASSETS_DIR
+from andes.gui.views import main
+from andes.runtime import (
     _filter_gdk_cursor_noise,
     _sanitize_ld_library_path,
 )

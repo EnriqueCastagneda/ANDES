@@ -9,8 +9,8 @@ import pandas as pd
 import pytest
 import xlwt
 
-from bcrp_downloader.core import mef_stats
-from bcrp_downloader.core.api import export_series
+from andes.core import mef_stats
+from andes.core.api import export_series
 
 
 def _sample_xls(path):

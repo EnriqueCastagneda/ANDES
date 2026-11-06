@@ -28,7 +28,7 @@ from .paths import DATA_DIR
 
 BASE_URL = "https://estadisticas.bcrp.gob.pe/estadisticas/series/api"
 MAX_BATCH = 10
-CACHE_PATH = os.path.join(DATA_DIR, "bcrp_cache.sqlite3")
+CACHE_PATH = os.path.join(DATA_DIR, "andes_cache.sqlite3")
 
 HEADERS = {
     "User-Agent": (

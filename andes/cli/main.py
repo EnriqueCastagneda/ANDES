@@ -20,7 +20,7 @@ from ..core.metadata import KNOWN_CODE_COL, KNOWN_NAME_COL, filter_metadata, loa
 app = typer.Typer(
     add_completion=False,
     no_args_is_help=True,
-    help=f"{APP_NAME} {APP_VERSION}: explora y descarga series del BCRP.",
+    help=f"{APP_NAME} {APP_VERSION}: estadísticas y datos abiertos.",
 )
 
 

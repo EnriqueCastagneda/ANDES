@@ -5,8 +5,8 @@ from __future__ import annotations
 import pandas as pd
 from typer.testing import CliRunner
 
-import bcrp_downloader.cli.main as cli
-from bcrp_downloader.core import catalog, metadata
+import andes.cli.main as cli
+from andes.core import catalog, metadata
 
 runner = CliRunner()
 

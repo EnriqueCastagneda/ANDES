@@ -44,14 +44,14 @@ la metodología, la cobertura y las condiciones de reutilización de cada serie.
 
 ## Características
 
-- **Núcleo desacoplado**: `bcrp_downloader.core` maneja metadatos, HTTP y exportación
+- **Núcleo desacoplado**: `andes.core` maneja metadatos, HTTP y exportación
   sin depender de Flet.
 - **GUI** con identidad ANDES, temas claro y oscuro exactos, búsqueda, filtro
   por institución, filtros colapsables, selección múltiple, navegación por
   teclado y tema automático según la hora local con interruptor manual
   persistente.
-- **CLI** con `bcrp search`, `bcrp download`, `bcrp download-many`, `bcrp gui` y
-  `bcrp mcp`.
+- **CLI** con `andes search`, `andes download`, `andes download-many`, `andes gui` y
+  `andes mcp`.
 - **Catálogo local SQLite + FTS5**: búsquedas en milisegundos sin cargar el CSV
   completo de 6,9 MB en cada arranque.
 - **Parámetros y detalles por institución**: formatos de periodo propios (BCRP
@@ -135,8 +135,11 @@ Consulta la página de [releases](https://github.com/EnriqueCastagneda/ANDES/rel
 Para usuarios (entorno aislado, recomienda [pipx](https://pipx.pypa.io/)):
 
 ```bash
-pipx install bcrp-downloader
+pipx install andes-open-data
 ```
+
+El paquete de importación es `andes`. Se mantiene el alias `bcrp_downloader`
+(``import bcrp_downloader``) y el comando `bcrp` por compatibilidad.
 
 Para desarrollo:
 
@@ -153,9 +156,9 @@ pip install -e ".[mcp,dev]"
 ### GUI
 
 ```bash
-bcrp gui
+andes gui
 # o en el navegador:
-bcrp gui --web --port 8550
+andes gui --web --port 8550
 ```
 
 También funciona `python app.py`.
@@ -163,11 +166,11 @@ También funciona `python app.py`.
 ### CLI
 
 ```bash
-bcrp search "tipo de cambio" --frequency Mensual --limit 10
-bcrp download PN00001MM --start 2024-1 --end 2024-12 --out datos/pn00001mm.csv
-bcrp download PN00001MM -s 2024-1 -e 2024-12 --format json
-bcrp download-many PN00001MM PN00002MM PN00003MM -s 2024-1 -e 2024-12 -o lote.csv
-bcrp --help
+andes search "tipo de cambio" --frequency Mensual --limit 10
+andes download PN00001MM --start 2024-1 --end 2024-12 --out datos/pn00001mm.csv
+andes download PN00001MM -s 2024-1 -e 2024-12 --format json
+andes download-many PN00001MM PN00002MM PN00003MM -s 2024-1 -e 2024-12 -o lote.csv
+andes --help
 ```
 
 ### Integración de portales
@@ -186,7 +189,7 @@ python scripts/export_specs.py
 Con la app en marcha en otra terminal:
 
 ```bash
-bcrp gui --web --port 8550
+andes gui --web --port 8550
 python scripts/eval_web_gui.py
 ```
 
@@ -199,7 +202,7 @@ recorre catálogo, búsqueda, filtros, selección y descarga real, guarda captur
 Instala el extra `mcp` y registra el servidor.
 
 ```bash
-pipx install "bcrp-downloader[mcp]"
+pipx install "andes-open-data[mcp]"
 ```
 
 Claude Desktop (`claude_desktop_config.json`):
@@ -207,8 +210,8 @@ Claude Desktop (`claude_desktop_config.json`):
 ```json
 {
   "mcpServers": {
-    "bcrp-downloader": {
-      "command": "bcrp",
+    "andes": {
+      "command": "andes",
       "args": ["mcp"]
     }
   }
@@ -220,8 +223,8 @@ Cursor (`.cursor/mcp.json`):
 ```json
 {
   "mcpServers": {
-    "bcrp-downloader": {
-      "command": "bcrp",
+    "andes": {
+      "command": "andes",
       "args": ["mcp"]
     }
   }
@@ -239,7 +242,7 @@ Herramientas expuestas:
 ### Uso como biblioteca
 
 ```python
-from bcrp_downloader.core import filter_metadata, load_metadata, download_series_file
+from andes.core import filter_metadata, load_metadata, download_series_file
 
 df = filter_metadata(load_metadata(), {"frecuencia": "Mensual"})
 path = download_series_file("PN00001MM", "2024-1", "2024-12", "csv")
@@ -248,8 +251,8 @@ path = download_series_file("PN00001MM", "2024-1", "2024-12", "csv")
 ## Estructura
 
 ```text
-bcrp_downloader/
-├── bcrp_downloader/
+andes/
+├── andes/
 │   ├── core/          # api.py, catalog.py, fetcher.py, metadata.py, portals.py, adapters/, sources.py
 │   ├── gui/           # views.py, theme.py
 │   ├── cli/           # main.py (Typer)
@@ -296,8 +299,8 @@ La información pertenece al Banco Central de Reserva del Perú.
 
 ## Identidad y marca
 
-La identidad visual vive en `bcrp_downloader/core/branding.py` y los recursos en
-`assets/`. El tema se aplica desde `bcrp_downloader/gui/theme.py` con los
+La identidad visual vive en `andes/core/branding.py` y los recursos en
+`assets/`. El tema se aplica desde `andes/gui/theme.py` con los
 colores institucionales. El código se distribuye bajo GPLv3; la marca se rige
 por `TRADEMARKS.md`.
 

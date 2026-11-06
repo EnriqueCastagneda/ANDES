@@ -105,7 +105,7 @@ bypass.
 
 ## 5. Diseño de integración (encaja en la arquitectura actual)
 
-Dos módulos nuevos en `bcrp_downloader/core/`, sin dependencias nuevas:
+Dos módulos nuevos en `andes/core/`, sin dependencias nuevas:
 
 ### `catalog.py` — catálogo local SQLite + FTS5
 
@@ -138,7 +138,7 @@ Dos módulos nuevos en `bcrp_downloader/core/`, sin dependencias nuevas:
 | `core/api.py` | `download_series_data()` delega en `fetcher.fetch_series([code], ...)`; añadir `download_many(codes, ...)` para lotes. |
 | `core/http.py` | Reutilizar `_is_block`; el nuevo cliente ya incorpora detección y backoff (no borrar el módulo: lo usan tests y descargas XLS). |
 | `gui/views.py` | Implementado: búsqueda y filtros vía `search_catalog()`, descarga por lotes con `download_many()` agrupada por frecuencia, progreso por lote y respaldo serie por serie. |
-| `cli/main.py` | Nuevo `bcrp download-many --codes ... --frequency Mensual` y `bcrp catalog refresh`. |
+| `cli/main.py` | Nuevo `andes download-many --codes ... --frequency Mensual` y `andes catalog refresh`. |
 | `mcp/server.py` | `search_series` usa FTS5; `download_series` acepta lista de códigos. |
 
 ### Flujo recomendado
@@ -197,8 +197,8 @@ usuario elige N series
 
 ```
 bcrp-integracion/
-├── bcrp_downloader/core/catalog.py     # catálogo SQLite + FTS5
-├── bcrp_downloader/core/fetcher.py     # lotes, rate-limit, backoff, caché
+├── andes/core/catalog.py     # catálogo SQLite + FTS5
+├── andes/core/fetcher.py     # lotes, rate-limit, backoff, caché
 ├── scripts/bench_portal.py             # benchmark reproducible
 ├── tests/test_fast_portal.py           # pruebas sin red
 └── BCRP-portal-analisis.md             # este documento
@@ -219,7 +219,7 @@ Integrado en la rama `feat/portal-rapido` del repo principal:
 - `core/metadata.py`: `search_catalog()`, `series_info()`, `frequency_for()`,
   `catalog_frequencies()` (mismas columnas que `load_metadata`).
 - `core/api.py`: `download_many(codes, start, end, frequency=None)`.
-- `cli/main.py`: comando `bcrp download-many`.
+- `cli/main.py`: comando `andes download-many`.
 - `tests/test_fast_integration.py`: adaptadores y CLI.
 - `tests/test_gui_catalog.py`: prueba de humo de la GUI con `Page` falso.
 

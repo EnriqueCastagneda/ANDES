@@ -25,7 +25,7 @@ convencionales.
 | Claro | Texto y destaque | `#2a3f48` |
 
 Variaciones derivadas (superficies, bordes, estados) viven en
-`bcrp_downloader/core/branding.py` como parte del `ColorScheme` de Flet.
+`andes/core/branding.py` como parte del `ColorScheme` de Flet.
 No se sustituyen los cuatro colores base.
 
 Paleta categórica para gráficos: `branding.CHART_COLORS` (8 tonos aptos para
@@ -57,7 +57,7 @@ Se usa la tipografía del sistema de Flet (Roboto). Jerarquía:
 
 ## Temas
 
-`bcrp_downloader/gui/theme.py` aplica `branding.theme_light()` y
+`andes/gui/theme.py` aplica `branding.theme_light()` y
 `branding.theme_dark()` a `page.theme` y `page.dark_theme`. El modo se alterna
 con el botón del pie, se guarda en `data/prefs.json` y, sin preferencia manual,
 sigue la hora local (claro 06:00–17:59).

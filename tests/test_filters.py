@@ -9,7 +9,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from bcrp_downloader.core import catalog, metadata
+from andes.core import catalog, metadata
 
 HEADER = (
     "Institución;Código de serie;Categoría de serie;Grupo de serie;Nombre de serie;"

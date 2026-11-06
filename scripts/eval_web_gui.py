@@ -2,7 +2,7 @@
 """Evalúa la GUI web de BCRP Downloader contra un servidor Flet en marcha.
 
 Uso:
-    bcrp gui --web --port 8550        # en otra terminal
+    andes gui --web --port 8550        # en otra terminal
     python scripts/eval_web_gui.py    # o: --url http://127.0.0.1:8550/
 
 Requiere Chromium y ``websocket-client`` (extra de desarrollo). Hace capturas en

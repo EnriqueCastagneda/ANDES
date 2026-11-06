@@ -108,8 +108,8 @@ def cleanup(out_dir: str, files_dir: str) -> tuple[bool, bool]:
 
 def main() -> int:
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from bcrp_downloader.core.adapters import get_adapter
-    from bcrp_downloader.core.api import export_series
+    from andes.core.adapters import get_adapter
+    from andes.core.api import export_series
 
     adapter = get_adapter("inei_tematico")
     picks = pick_datasets(adapter)

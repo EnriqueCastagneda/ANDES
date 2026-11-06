@@ -19,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from bcrp_downloader.core.gobpe import classify  # noqa: E402
+from andes.core.gobpe import classify  # noqa: E402
 
 BASE = "https://www.gob.pe/busquedas.json"
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ANDES/2.0)"}
@@ -132,7 +132,7 @@ def main() -> int:
                     print(f"{index}/{len(pending)} páginas", flush=True)
     print(f"listo: {len(pending) - errors} páginas nuevas, {errors} errores", flush=True)
 
-    from bcrp_downloader.core import gobpe
+    from andes.core import gobpe
 
     portals = gobpe.rebuild(args.out)
     print(f"registro: {len(portals)} portales únicos", flush=True)

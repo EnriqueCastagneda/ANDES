@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-import bcrp_downloader.mcp.server as srv
+import andes.mcp.server as srv
 
 
 def test_search_series_returns_dicts(sample_df, monkeypatch):

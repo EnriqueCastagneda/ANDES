@@ -5,8 +5,8 @@ import sqlite3
 
 import pytest
 
-from bcrp_downloader.core import catalog
-from bcrp_downloader.core.catalog import _fts_query
+from andes.core import catalog
+from andes.core.catalog import _fts_query
 
 
 @pytest.fixture()

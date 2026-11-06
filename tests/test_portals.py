@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from bcrp_downloader.core import adapters, catalog, portals
+from andes.core import adapters, catalog, portals
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 
@@ -83,7 +83,7 @@ def test_mef_adapter_ingests_and_fetches(tmp_path, monkeypatch):
     monkeypatch.setattr(catalog, "METADATA_PATH", str(csv_path))
     monkeypatch.setattr(catalog, "CATALOG_PATH", str(tmp_path / "catalog.sqlite3"))
 
-    from bcrp_downloader.core.adapters import mef
+    from andes.core.adapters import mef
 
     mef.MefAdapter._resource = None
     mef.MefAdapter._resources = None
@@ -157,7 +157,7 @@ def test_unknown_portal_rejected():
 
 
 def test_mef_period_bounds_accept_full_dates():
-    from bcrp_downloader.core.adapters.mef import _bounds
+    from andes.core.adapters.mef import _bounds
 
     assert _bounds("2010-01-01", "2026-10-01") == ("2010-01", "2026-10")
     assert _bounds("2022", "2024") == ("2022-01", "2024-12")

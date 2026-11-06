@@ -7,8 +7,8 @@ import xml.etree.ElementTree as ET
 import openpyxl
 import pandas as pd
 
-from bcrp_downloader.core.adapters.inei import IneiAdapter, _bounds, _numeric, _ubigeo
-from bcrp_downloader.core.api import export_series
+from andes.core.adapters.inei import IneiAdapter, _bounds, _numeric, _ubigeo
+from andes.core.api import export_series
 
 
 def test_bounds_accepts_years_and_months():
@@ -24,7 +24,7 @@ def test_numeric_and_ubigeo_normalization():
 
 
 def test_adapter_indexes_and_searches():
-    from bcrp_downloader.core import catalog
+    from andes.core import catalog
 
     adapter = IneiAdapter()
     adapter._ensure_indexed()
@@ -123,7 +123,7 @@ def test_inei_exports_all_formats(tmp_path, monkeypatch):
 def test_xml_export_sanitizes_numeric_columns():
     import xml.etree.ElementTree as ET
 
-    from bcrp_downloader.core.api import _dataframe_to_xml
+    from andes.core.api import _dataframe_to_xml
 
     frame = pd.concat(
         [
