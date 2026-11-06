@@ -19,7 +19,8 @@ y versionado [SemVer](https://semver.org/lang/es/).
 - Temas persistentes en `data/prefs.json`.
 - `TRADEMARKS.md`, `CITATION.cff`, `SECURITY.md` y código de conducta.
 - Pantalla de carga y manifiesto PWA con la identidad ANDES.
-- `index.html` propio con título, tema, fondo de carga y favicon versionado.
+- `index.html` propio con título, tema, fondo de carga y rutas únicas de
+  favicon (`icons/andes-favicon.png`) y carga (`icons/loading-andes.png`).
 
 ### Cambiado
 

@@ -13,6 +13,7 @@ ICON_DIR = ROOT / "assets" / "icon"
 SIZES = {
     ROOT / "assets" / "icon.png": 256,
     ROOT / "assets" / "favicon.png": 32,
+    ROOT / "assets" / "icons" / "andes-favicon.png": 32,
     ROOT / "assets" / "icons" / "icon-192.png": 192,
     ROOT / "assets" / "icons" / "icon-512.png": 512,
     ROOT / "assets" / "icons" / "icon-maskable-192.png": 192,
@@ -75,7 +76,7 @@ def test_svg_source_is_not_black():
 
 def test_loading_animation_uses_app_icon():
     source = (ICON_DIR / "andes_icono_512.png").read_bytes()
-    loading = (ROOT / "assets" / "icons" / "loading-animation.png").read_bytes()
+    loading = (ROOT / "assets" / "icons" / "loading-andes.png").read_bytes()
     assert hashlib.sha256(source).digest() == hashlib.sha256(loading).digest()
 
 
@@ -95,7 +96,8 @@ def test_manifest_uses_ande_branding():
 def test_web_index_branding_and_cache_busting():
     index = (ROOT / "assets" / "index.html").read_text(encoding="utf-8")
     assert "<title>ANDES — Open Data Platform</title>" in index
-    assert "favicon.png?v=2" in index
+    assert "icons/andes-favicon.png" in index
+    assert "icons/loading-andes.png" in index
     assert 'name="theme-color" content="#1A1C33"' in index
     assert "background: #f1eadc" in index
     assert "background: #1b293d" in index
