@@ -91,6 +91,22 @@ la metodología, la cobertura y las condiciones de reutilización de cada serie.
 - **Detección de documentación PDF** en las descripciones de las series.
 - **Caché local** de metadatos y suites de pruebas con mocks.
 
+## Operadores de búsqueda avanzada
+
+El buscador admite operadores booleanos y campos. Las tildes se ignoran.
+
+| Operador | Ejemplo | Resultado |
+| --- | --- | --- |
+| `AND` (implícito) | `canon AND minero` | ambos términos |
+| `OR` | `canon OR forestal` | cualquiera |
+| `NOT` / `-` | `canon NOT forestal` · `canon -forestal` | excluye |
+| `"frase"` | `"tipo de cambio"` | frase exacta |
+| `( )` | `(canon OR regalías) AND minero` | agrupa |
+| `campo:` | `codigo:PN00001MM` · `nombre:población` | campo específico |
+
+Campos: `codigo:`, `nombre:`, `grupo:`, `categoria:`, `unidad:`.
+Una expresión inválida se reintenta como búsqueda simple por prefijos.
+
 ## Requisitos
 
 - Python 3.10 o superior

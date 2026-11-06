@@ -283,6 +283,10 @@ def main(page: ft.Page):
     def make_search_box() -> ft.TextField:
         return ft.TextField(
             hint_text="Buscar serie, código o categoría…",
+            tooltip=(
+                "Operadores: AND, OR, NOT, -término, \"frase\", ( ), "
+                "codigo:, nombre:, grupo:, categoria:, unidad:"
+            ),
             text_size=14,
             filled=False,
             border=ft.InputBorder.NONE,
