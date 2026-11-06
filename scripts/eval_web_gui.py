@@ -15,6 +15,7 @@ import argparse
 import base64
 import json
 import os
+import socket
 import subprocess
 import sys
 import time
@@ -33,8 +34,13 @@ VIEWPORT = (1280, 820)
 class Browser:
     """Cliente CDP mínimo sobre Chromium headless."""
 
-    def __init__(self, url: str, out: Path, port: int = 9222):
+    def __init__(self, url: str, out: Path, port: int | None = None):
         self.out = out
+        if port is None:
+            probe = socket.socket()
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+            probe.close()
         self.port = port
         self.proc = subprocess.Popen(
             [
@@ -47,6 +53,7 @@ class Browser:
                 "--use-angle=swiftshader",
                 f"--remote-debugging-port={port}",
                 f"--window-size={VIEWPORT[0]},{VIEWPORT[1]}",
+                f"--user-data-dir=/tmp/opencode/chromium-eval-{os.getpid()}",
                 url,
             ],
             stdout=subprocess.DEVNULL,
@@ -58,7 +65,12 @@ class Browser:
                 pages = requests.get(
                     f"http://127.0.0.1:{port}/json/list", timeout=1
                 ).json()
-                target = next((p for p in pages if p.get("type") == "page"), None)
+                candidates = [p for p in pages if p.get("type") == "page"]
+                target = next(
+                    (p for p in candidates
+                     if str(p.get("url", "")).startswith(url)),
+                    None,
+                ) or (candidates[0] if candidates else None)
                 if target:
                     break
             except Exception:
@@ -70,6 +82,8 @@ class Browser:
         self._id = 0
         self.cmd("Runtime.enable")
         self.cmd("Page.enable")
+        self.cmd("Page.navigate", {"url": url})
+        time.sleep(2.0)
 
     def cmd(self, method: str, params: dict | None = None) -> dict:
         self._id += 1
@@ -142,6 +156,24 @@ class Browser:
         self.click_at(point)
         return True
 
+    def click_option(self, text: str) -> bool:
+        """Hace clic en una opción, desplazándola a la vista si hace falta."""
+        expression = (
+            f"[...document.querySelectorAll('flt-semantics')]"
+            f".filter(e => (e.textContent || '').trim() === {json.dumps(text)})[0]"
+        )
+        self.js(
+            "(() => { const el = " + expression + ";"
+            " if (!el) return false;"
+            " el.scrollIntoView({block: 'center'}); return true; })()"
+        )
+        time.sleep(0.4)
+        point = self.rect(expression)
+        if not point:
+            return False
+        self.click_at(point)
+        return True
+
     def click_label(self, prefix: str, index: int = 0) -> bool:
         expression = (
             f"[...document.querySelectorAll('[aria-label]')]"
@@ -159,6 +191,29 @@ class Browser:
         time.sleep(0.3)
         self.cmd("Input.dispatchKeyEvent", {"type": "keyDown", "key": "a", "modifiers": 2})
         self.cmd("Input.dispatchKeyEvent", {"type": "keyUp", "key": "a", "modifiers": 2})
+        self.cmd("Input.insertText", {"text": text})
+        time.sleep(0.3)
+        return True
+
+    def set_search(self, text: str) -> bool:
+        """Limpia el buscador (por aria-label) y escribe el texto."""
+        self.js("document.querySelector('input[aria-label^=Buscar]')?.focus()")
+        time.sleep(0.2)
+        self.cmd("Input.dispatchKeyEvent", {
+            "type": "rawKeyDown", "key": "a", "code": "KeyA",
+            "windowsVirtualKeyCode": 65, "modifiers": 2,
+        })
+        self.cmd("Input.dispatchKeyEvent", {
+            "type": "keyUp", "key": "a", "code": "KeyA",
+            "windowsVirtualKeyCode": 65, "modifiers": 2,
+        })
+        self.cmd("Input.dispatchKeyEvent", {
+            "type": "rawKeyDown", "key": "Backspace",
+            "windowsVirtualKeyCode": 8,
+        })
+        self.cmd("Input.dispatchKeyEvent", {
+            "type": "keyUp", "key": "Backspace", "windowsVirtualKeyCode": 8,
+        })
         self.cmd("Input.insertText", {"text": text})
         time.sleep(0.3)
         return True
@@ -181,7 +236,7 @@ def main() -> int:
     parser.add_argument("--url", default="http://127.0.0.1:8550/")
     parser.add_argument("--out", default="/tmp/opencode/eval-web")
     parser.add_argument("--outputs", default="outputs")
-    parser.add_argument("--port", type=int, default=9222)
+    parser.add_argument("--port", type=int, default=None)
     args = parser.parse_args()
 
     out = Path(args.out)
@@ -224,7 +279,7 @@ def main() -> int:
         time.sleep(1.0)
         texts = " ".join(browser.texts()).upper()
         check("BCRP y MEF listados", "BCRP" in texts and "MEF" in texts)
-        browser.click_at({"x": 146, "y": 291})  # opción BCRP
+        browser.click_option("BCRP")
         time.sleep(1.8)
         texts = " ".join(browser.texts()).upper()
         check("BCRP arranca con filtros plegados", "DIARIA" not in texts)
@@ -280,7 +335,7 @@ def main() -> int:
         # 7. institución MEF: filtros propios, plegados por defecto
         browser.click_at({"x": 146, "y": 190})
         time.sleep(1.0)
-        browser.click_at({"x": 146, "y": 339})  # opción MEF
+        browser.click_option("MEF")
         time.sleep(1.8)
         texts = " ".join(browser.texts()).upper()
         check("MEF arranca con filtros plegados", "DIARIA" not in texts)
@@ -396,7 +451,7 @@ def main() -> int:
         check("fecha MEF inicio", browser.type_into("Fecha inicio", "2010-01-01"))
         check("fecha MEF fin", browser.type_into("Fecha fin", "2026-10-01"))
         check("descargar MEF", browser.click_semantics("Descargar"))
-        deadline = time.time() + 120
+        deadline = time.time() + 300
         mef_files: list[str] = []
         while time.time() < deadline:
             mef_files = [
@@ -415,7 +470,7 @@ def main() -> int:
         # 8b. INEI Población Proyectada: fechas bloqueadas, formato XLS
         browser.click_at({"x": 146, "y": 190})
         time.sleep(0.6)
-        browser.click_at({"x": 146, "y": 390})
+        browser.click_option("INEI Población Proyectada")
         time.sleep(1.2)
         texts = ""
         deadline = time.time() + 15
@@ -438,7 +493,7 @@ def main() -> int:
         )
         check("INEI bloquea fechas", '"d":true' in (blocked or ""))
 
-        browser.js("document.querySelector('input')?.focus()")
+        browser.js("document.querySelector('input[aria-label^=Buscar]')?.focus()")
         browser.cmd("Input.dispatchKeyEvent", {
             "type": "rawKeyDown", "key": "a", "code": "KeyA",
             "windowsVirtualKeyCode": 65, "modifiers": 2,
@@ -491,7 +546,7 @@ def main() -> int:
         # 8c. INEI Temático: archivo único, formato CSV
         browser.click_at({"x": 146, "y": 190})
         time.sleep(0.6)
-        browser.click_at({"x": 146, "y": 438})
+        browser.click_option("INEI Temático")
         time.sleep(1.5)
         texts = " ".join(browser.texts()).upper()
         check("INEI temático listado", "INEI TEMÁTICO" in texts)
@@ -526,7 +581,7 @@ def main() -> int:
         )
         check("INEI temático bloquea fechas", '"d":true' in (blocked or ""))
 
-        browser.js("document.querySelector('input')?.focus()")
+        browser.js("document.querySelector('input[aria-label^=Buscar]')?.focus()")
         browser.cmd("Input.dispatchKeyEvent", {
             "type": "rawKeyDown", "key": "a", "code": "KeyA",
             "windowsVirtualKeyCode": 65, "modifiers": 2,
@@ -582,28 +637,10 @@ def main() -> int:
         # 8. volver a BCRP para descargar
         browser.click_at({"x": 146, "y": 190})
         time.sleep(1.0)
-        browser.click_at({"x": 146, "y": 291})
+        browser.click_option("BCRP")
         time.sleep(1.6)
-        browser.click_at({"x": 190, "y": 130})
-        time.sleep(0.4)
-        for _ in range(2):
-            browser.cmd("Input.dispatchKeyEvent", {
-                "type": "rawKeyDown", "key": "a", "code": "KeyA",
-                "windowsVirtualKeyCode": 65, "modifiers": 2,
-            })
-            browser.cmd("Input.dispatchKeyEvent", {
-                "type": "keyUp", "key": "a", "code": "KeyA",
-                "windowsVirtualKeyCode": 65, "modifiers": 2,
-            })
-            browser.cmd("Input.dispatchKeyEvent", {
-                "type": "rawKeyDown", "key": "Backspace",
-                "windowsVirtualKeyCode": 8,
-            })
-            browser.cmd("Input.dispatchKeyEvent", {
-                "type": "keyUp", "key": "Backspace", "windowsVirtualKeyCode": 8,
-            })
-        browser.cmd("Input.insertText", {"text": "tipo de cambio"})
-        time.sleep(1.2)
+        check("buscador BCRP", browser.set_search("tipo de cambio"))
+        time.sleep(1.5)
         browser.click_at({"x": 328, "y": 190})  # desplegar filtros BCRP
         time.sleep(1.2)
         check("clic filtro Diaria (retorno)", browser.click_at({"x": 142, "y": 248}) or True)
@@ -613,13 +650,23 @@ def main() -> int:
         labels = " ".join(browser.labels()).upper()
         check("BCRP devuelve series", "SELECCIONAR SERIE" in labels)
 
-        # 9. selección múltiple
-        for code in ("PD04637PD", "PD04638PD", "PD04647PD"):
+        # 9. selección múltiple (primeras 3 visibles, sin códigos fijos)
+        import re as _re
+
+        visible = [
+            _re.search(r"\b([A-Z]{2}\d{5}[A-Z]{2})\b", label.upper())
+            for label in browser.labels()
+        ]
+        codes = list(dict.fromkeys(
+            match.group(1) for match in visible if match
+        ))[:3]
+        for code in codes:
             browser.click_label(f"Seleccionar serie\n{code}")
-            time.sleep(0.3)
+            time.sleep(0.4)
         check(
             "3 series seleccionadas",
-            browser.wait_text("3 seleccionada(s)", timeout=5),
+            browser.wait_text("3 seleccionada(s)", timeout=8),
+            ", ".join(codes),
         )
 
         # 10. fechas y descarga por lotes
@@ -647,6 +694,69 @@ def main() -> int:
         if csvs:
             sample = (outputs / csvs[0]).read_text(encoding="utf-8-sig").splitlines()
             check("CSV con encabezado y datos", len(sample) >= 2, sample[0] if sample else "")
+
+        # 8d. Portales institucionales: cada enlace va a su institución
+        browser.click_at({"x": 146, "y": 190})
+        time.sleep(0.8)
+        texts = " ".join(browser.texts()).upper()
+        check(
+            "instituciones de portal en el selector",
+            "AGROMERCADO" in texts and "CONTRALORIA" in texts,
+        )
+        browser.click_option("AGROMERCADO")
+        time.sleep(1.5)
+        texts = ""
+        deadline = time.time() + 15
+        while time.time() < deadline:
+            texts = " ".join(browser.texts()).upper()
+            if "PORTAL INSTITUCIONAL" in texts:
+                break
+            time.sleep(0.5)
+        check("portal AGROMERCADO listado", "PORTAL INSTITUCIONAL" in texts)
+        browser.click_at({"x": 328, "y": 190})
+        time.sleep(1.0)
+        texts = " ".join(browser.texts()).upper()
+        check("panel del portal visible", "FILTROS DE PORTALES DE GOB.PE" in texts)
+        browser.shot("09g-gobpe.png")
+        browser.click_at({"x": 105, "y": 271})  # Plataforma
+        time.sleep(1.0)
+        texts = " ".join(browser.texts()).upper()
+        check("plataformas del portal", "WEB" in texts)
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "rawKeyDown", "key": "Escape", "code": "Escape",
+            "windowsVirtualKeyCode": 27,
+        })
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "keyUp", "key": "Escape", "code": "Escape",
+            "windowsVirtualKeyCode": 27,
+        })
+        time.sleep(0.6)
+        blocked = browser.js(
+            "JSON.stringify([...document.querySelectorAll('input')]"
+            ".map(i => ({l: i.getAttribute('aria-label'), d: i.disabled})))"
+        )
+        check("portal bloquea fechas", '"d":true' in (blocked or ""))
+        browser.click_at({"x": 328, "y": 190})
+        time.sleep(0.8)
+        labels = ""
+        deadline = time.time() + 20
+        while time.time() < deadline:
+            labels = " ".join(browser.labels()).upper()
+            if "GOBPE-" in labels:
+                break
+            time.sleep(0.5)
+        check("portal devuelve enlaces", "GOBPE-" in labels)
+        check(
+            "portal selecciona enlace",
+            browser.click_label("Seleccionar serie\nGOBPE-"),
+        )
+        time.sleep(0.5)
+        check("abrir portal externo", browser.click_semantics("Descargar"))
+        check(
+            "portal externo notificado",
+            browser.wait_text("Portal externo abierto", timeout=12),
+        )
+        browser.shot("09h-gobpe-resultados.png")
 
         # 7. sin errores de consola
         console = browser.cmd("Runtime.evaluate", {"expression": "1"})  # mantiene viva la sesión

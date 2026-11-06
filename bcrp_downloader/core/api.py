@@ -30,13 +30,29 @@ def periods_to_dataframe(data, code):
     return pd.DataFrame(rows)
 
 
+def _xml_tag(name, index: int, used: set[str]) -> str:
+    """Convierte un nombre de columna en una etiqueta XML válida y única."""
+    tag = re.sub(r"[^\w.-]", "_", str(name)).strip("_")
+    if not tag or not re.match(r"[A-Za-z_]", tag):
+        tag = f"col_{tag or index}"
+    base = tag
+    suffix = 2
+    while tag in used:
+        tag = f"{base}_{suffix}"
+        suffix += 1
+    used.add(tag)
+    return tag
+
+
 def _dataframe_to_xml(df):
     """Serialize a DataFrame to XML using the standard library."""
     root = ET.Element("serie")
+    used: set[str] = set()
+    tags = [_xml_tag(col, index, used) for index, col in enumerate(df.columns)]
     for _, row in df.iterrows():
         rec = ET.SubElement(root, "periodo")
-        for col in df.columns:
-            el = ET.SubElement(rec, re.sub(r"[^\w]", "_", str(col)))
+        for tag, col in zip(tags, df.columns, strict=True):
+            el = ET.SubElement(rec, tag)
             el.text = str(row[col])
     return ET.tostring(root, encoding="unicode")
 

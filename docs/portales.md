@@ -129,3 +129,26 @@ requieren controles propios.
   búsqueda es local. Al descargar se lee la tabla (detección de encabezado) y se
   exporta a CSV.
 - Archivo único: la GUI bloquea las fechas y fija la salida en CSV.
+
+## Portales institucionales — servicios estadísticos de Gob.pe
+
+- Fuente: buscador de Gob.pe, `https://www.gob.pe/busquedas?term=estadisticas`.
+  El endpoint JSON (`/busquedas.json?term=...&sheet=N`) expone 25 resultados por
+  página; el término «estadisticas» devuelve ~46 335 resultados en 1 854
+  páginas.
+- `scripts/discover_gobpe.py` recorre todas las páginas (reanudable), deduplica
+  por URL y clasifica cada destino: `csv`, `excel`, `api`, `ckan`, `tableau`,
+  `powerbi`, `pdf`, `web`, `gobpe`.
+- El registro se guarda en `data/gobpe/portals.json` (semilla versionada en
+  `fixtures/gobpe/portals.json`). Cada portal se atribuye a su institución real
+  (`content_sub_title_card`), con id `gobpe:<institución>`; el selector muestra
+  el nombre de la institución, nunca un agrupador «Gob.pe».
+- Prefijos repetidos se agrupan para no inflar el menú: `MUNI*` →
+  **Municipalidades**, `REGION*` → **Regiones**, `UGEL*` → **UGEL**,
+  `RED*` → **Redes de Salud**. Las reglas están en `gobpe.GROUP_RULES`.
+- Cada opción del selector lleva un globo (tooltip) con el nombre completo de
+  la institución cuando la etiqueta es una sigla.
+- El adaptador indexa cada portal como `GOBPE-<hash>` con plataforma (filtro).
+- Descarga: solo plataformas tabulares (CSV, Excel, API/JSON). Tableau, Power BI,
+  PDF y páginas web se abren como enlace externo.
+- Archivo único: fechas bloqueadas y salida fija en CSV.

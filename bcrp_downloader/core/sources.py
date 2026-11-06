@@ -27,7 +27,7 @@ class Source:
     formats: tuple[str, ...] = ()
 
 
-SOURCES: tuple[Source, ...] = (
+_BASE_SOURCES: tuple[Source, ...] = (
     Source(
         id="bcrp",
         name="Banco Central de Reserva del Perú",
@@ -99,6 +99,29 @@ SOURCES: tuple[Source, ...] = (
     ),
 )
 
+
+def _portal_sources() -> tuple[Source, ...]:
+    """Una institución por cada entidad con portales en el registro Gob.pe."""
+    from . import gobpe
+
+    generated: list[Source] = []
+    for inst in gobpe.institutions():
+        generated.append(
+            Source(
+                id=f"gobpe:{inst['id']}",
+                name=inst.get("name") or inst["label"],
+                short_name=inst["label"],
+                base_url="https://www.gob.pe/",
+                metadata_url="https://www.gob.pe/busquedas.json?term=estadisticas",
+                fixed_period=True,
+                formats=("csv",),
+            )
+        )
+    return tuple(generated)
+
+
+SOURCES: tuple[Source, ...] = _BASE_SOURCES + _portal_sources()
+
 DEFAULT_SOURCE = "bcrp"
 
 _BY_ID = {source.id: source for source in SOURCES}
@@ -114,6 +137,11 @@ def get_source(source_id: str | None) -> Source | None:
 def sources(enabled_only: bool = True) -> list[Source]:
     """Lista las instituciones registradas."""
     return [s for s in SOURCES if s.enabled or not enabled_only]
+
+
+def declared() -> list[Source]:
+    """Solo las instituciones base (sin los portales generados)."""
+    return list(_BASE_SOURCES)
 
 
 def labels() -> dict[str, str]:

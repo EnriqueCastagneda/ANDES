@@ -111,8 +111,23 @@ def _rows(csv_path: str) -> Iterable[tuple]:
 
 
 def build_catalog(csv_path: str = METADATA_PATH, db_path: str = CATALOG_PATH) -> str:
-    """Reconstruye el catálogo SQLite desde el CSV, de forma atómica."""
+    """Reconstruye el catálogo BCRP sin borrar las demás instituciones."""
     os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
+
+    preserved: list[tuple] = []
+    if os.path.exists(db_path):
+        try:
+            source = sqlite3.connect(db_path)
+            try:
+                preserved = source.execute(
+                    "SELECT " + ", ".join(_UPSERT_COLUMNS) + " FROM series"
+                    " WHERE institution != 'bcrp'"
+                ).fetchall()
+            finally:
+                source.close()
+        except sqlite3.Error:
+            preserved = []
+
     tmp = f"{db_path}.part"
     if os.path.exists(tmp):
         os.remove(tmp)
@@ -121,12 +136,19 @@ def build_catalog(csv_path: str = METADATA_PATH, db_path: str = CATALOG_PATH) ->
     try:
         conn.executescript(_SCHEMA)
         conn.executemany(
-            "INSERT INTO series (institution, code, category, group_name, name,"
-            " description, methodology, unit, scale, geo, source, frequency,"
-            " created, pub_group, area, updated, start, end, memo)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO series (" + ", ".join(_UPSERT_COLUMNS) + ") VALUES ("
+            + ",".join("?" * len(_UPSERT_COLUMNS)) + ")",
             _rows(csv_path),
         )
+        if preserved:
+            conn.executemany(
+                "INSERT OR REPLACE INTO series ("
+                + ", ".join(_UPSERT_COLUMNS)
+                + ") VALUES ("
+                + ",".join("?" * len(_UPSERT_COLUMNS))
+                + ")",
+                preserved,
+            )
         conn.execute("INSERT INTO series_fts(series_fts) VALUES('rebuild')")
         conn.commit()
     finally:
@@ -398,6 +420,21 @@ def clear_institution(institution: str, db_path: str | None = None) -> int:
     try:
         cursor = conn.execute(
             "DELETE FROM series WHERE institution = ?", (institution,)
+        )
+        conn.execute("INSERT INTO series_fts(series_fts) VALUES('rebuild')")
+        conn.commit()
+        return int(cursor.rowcount)
+    finally:
+        conn.close()
+
+
+def clear_prefix(prefix: str, db_path: str | None = None) -> int:
+    """Borra las series cuyo código empieza por ``prefix``."""
+    db_path = db_path or ensure_catalog()
+    conn = sqlite3.connect(db_path)
+    try:
+        cursor = conn.execute(
+            "DELETE FROM series WHERE code LIKE ?", (f"{prefix.upper()}%",)
         )
         conn.execute("INSERT INTO series_fts(series_fts) VALUES('rebuild')")
         conn.commit()

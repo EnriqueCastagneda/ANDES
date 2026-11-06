@@ -46,6 +46,14 @@ de IA.
 - **INEI Temático**: índice temático con 8 categorías y ~826 archivos de datos
   descubiertos en vivo (`INEI-TEM-<hash>`). Archivo único: fechas bloqueadas y
   salida fija en CSV.
+- **Portales por institución**: cada portal o servicio estadístico descubierto
+  en Gob.pe (1 854 páginas) se atribuye a su institución real (INEI, INPE,
+  OSITRAN, etc.) y aparece con ese nombre en el selector. Sin agrupador
+  «Gob.pe». Deduplicado por URL y clasificado por plataforma (CSV, Excel, API,
+  Tableau, Power BI, PDF, web). Los destinos tabulares se descargan; los
+  tableros se abren como enlace externo. Los prefijos repetidos se agrupan
+  (Municipalidades, Regiones, UGEL, Redes de Salud) para no inflar el menú.
+  Al pasar el puntero por una sigla se muestra un globo con el nombre completo.
 - **Detección de documentación PDF** en las descripciones de las series.
 - **Caché local** de metadatos y suites de pruebas con mocks.
 
