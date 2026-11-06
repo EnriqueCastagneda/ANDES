@@ -173,7 +173,7 @@ bcrp --help
 ### Integración de portales
 
 Cada institución declara su jerarquía y su adaptador nativo. El descubrimiento
-usa Chromium local y, solo como último recurso, TinyFish. Guía completa:
+usa Chromium local, sin servicios externos. Guía completa:
 [`docs/portales.md`](docs/portales.md).
 
 ```bash

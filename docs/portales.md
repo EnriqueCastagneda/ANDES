@@ -1,8 +1,8 @@
 # Integración de portales
 
-Regla: la aplicación **nunca** llama a TinyFish en tiempo de ejecución. TinyFish
-solo se usa, si hace falta, para descubrir la jerarquía de un portal; el resto se
-hace con herramientas locales y el contrato nativo.
+Regla: la integración se hace **solo con herramientas locales** del repositorio.
+No se usan agentes ni servicios externos, ni en tiempo de ejecución ni durante el
+descubrimiento.
 
 ## Reparto de herramientas
 
@@ -11,11 +11,8 @@ hace con herramientas locales y el contrato nativo.
 | API/Swagger/CKAN/SDMX público | `curl` + docs | 0 |
 | HTML estático | `curl` + parser | 0 |
 | JS público | `scripts/discover_portal.py` (Chromium local) | 0 |
-| Login, captcha o flujo interactivo | TinyFish, 1 corrida | 1 |
-| Jerarquía imposible de inferir | TinyFish, 1 corrida | 1 |
-
-Presupuesto: máximo 2 corridas de TinyFish por portal, y solo tras fallar el
-descubrimiento local.
+| Login, captcha o flujo interactivo | no automatizado: se documenta como pendiente | 0 |
+| Jerarquía difícil de inferir | inspección manual con Chromium local | 0 |
 
 ## Flujo
 
@@ -64,7 +61,7 @@ descubrimiento local.
    ```
 
    `search` usa el catálogo local; `fetch` habla directo con el portal. Sin
-   TinyFish ni servicios intermedios.
+   servicios intermedios.
 
 5. **Registrar** el adaptador en `core/adapters/__init__.py`.
 
