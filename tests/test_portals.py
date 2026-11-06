@@ -46,7 +46,7 @@ def test_mef_spec_declares_hierarchy():
 
 def test_fixtures_match_declared_specs():
     for spec in portals.specs():
-        data = json.loads((FIXTURES / spec.id / "hierarchy.json").read_text())
+        data = json.loads((FIXTURES / spec.id / "hierarchy.json").read_text(encoding="utf-8"))
         assert data == json.loads(json.dumps(asdict(spec)))
 
 

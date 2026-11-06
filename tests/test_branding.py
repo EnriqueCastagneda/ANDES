@@ -66,7 +66,7 @@ def test_controller_applies_both_themes_and_persists(tmp_path, monkeypatch):
     mode = controller.toggle()
     assert mode == ft.ThemeMode.LIGHT
     assert page.theme_mode == ft.ThemeMode.LIGHT
-    assert json.loads(prefs.read_text())["theme_mode"] == "light"
+    assert json.loads(prefs.read_text(encoding="utf-8"))["theme_mode"] == "light"
 
     restored = ThemeController(_FakePage())
     assert restored.manual == ft.ThemeMode.LIGHT
