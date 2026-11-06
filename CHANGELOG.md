@@ -18,6 +18,7 @@ y versionado [SemVer](https://semver.org/lang/es/).
 - Exportación XLS binaria y XML con etiquetas válidas.
 - Temas persistentes en `data/prefs.json`.
 - `TRADEMARKS.md`, `CITATION.cff`, `SECURITY.md` y código de conducta.
+- Pantalla de carga y manifiesto PWA con la identidad ANDES.
 
 ### Cambiado
 

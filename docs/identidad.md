@@ -62,6 +62,17 @@ Se usa la tipografía del sistema de Flet (Roboto). Jerarquía:
 con el botón del pie, se guarda en `data/prefs.json` y, sin preferencia manual,
 sigue la hora local (claro 06:00–17:59).
 
+## Pantalla de carga y PWA
+
+- `assets/icons/loading-animation.png` reemplaza la animación de Flet durante
+  la carga web. Flet busca primero los recursos del usuario.
+- `assets/manifest.json` define nombre, colores y iconos PWA de ANDES.
+- En compilaciones (`flet build`), `assets/` se empaqueta y el icono se declara
+  en `[tool.flet] icon`. La pantalla de arranque nativa de Android/iOS puede
+  aplicar además el icono y el color del sistema; se documenta como límite del
+  runtime.
+- Favicon: `assets/favicon.png`.
+
 ## Accesibilidad
 
 - Contraste alto entre fondo y texto en ambos temas.
