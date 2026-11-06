@@ -105,3 +105,14 @@ requieren controles propios.
   `2026-04`) y recorre todos los años disponibles (2010–2026) usando el CSV
   filtrado de cada recurso, con caché local por año. Las series guardan
   inicio/fin mensuales reales (p. ej. `2026-01` a `2026-10`).
+
+## INEI — población distrital
+
+- Fuente: `Perú: Población Total Proyectada al 30 de Junio de cada año, según
+  Departamento, Provincia y Distrito, 2018–2026` (INEI, XLSX).
+- Adaptador `adapters/inei.py`: descarga y cachea el XLSX una vez (30 días),
+  lo indexa como una serie por distrito (`INEI-POP-<ubigeo>`) y responde la
+  búsqueda desde el catálogo local.
+- Frecuencia anual; los periodos son `YYYY-01-01` y `fetch` respeta el rango
+  solicitado (años o fechas completas).
+- Exportación en los seis formatos (CSV, JSON, XLS, XML, TXT, HTML).
