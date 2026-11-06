@@ -64,7 +64,7 @@ jobs:
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
           else
-            VERSION="1.1.0"
+            VERSION="2.0.0"
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
       - name: Build with Flet

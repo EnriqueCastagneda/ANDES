@@ -5,8 +5,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-ASSETS_DIR = str(PROJECT_ROOT / "assets")
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = PACKAGE_ROOT.parent
+# Prefer the repository assets; fall back to the assets shipped in the wheel.
+ASSETS_DIR = str(
+    PROJECT_ROOT / "assets"
+    if (PROJECT_ROOT / "assets").is_dir()
+    else PACKAGE_ROOT / "assets"
+)
 
 METADATA_URL = "https://estadisticas.bcrp.gob.pe/estadisticas/series/metadata"
 DATA_DIR = os.environ.get("ANDES_DATA_DIR", "data")

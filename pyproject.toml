@@ -64,6 +64,9 @@ py-modules = ["app"]
 [tool.setuptools.packages.find]
 include = ["andes*"]
 
+[tool.setuptools.package-data]
+andes = ["assets/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

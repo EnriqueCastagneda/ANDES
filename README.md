@@ -120,15 +120,15 @@ Una expresión inválida se reintenta como búsqueda simple por prefijos.
 ## Ejecutables compilados
 
 <!-- DOWNLOADS:START -->
-Descarga los archivos de la versión [v1.1.0](https://github.com/EnriqueCastagneda/ANDES/releases/tag/v1.1.0):
+Descarga los archivos de la versión [v2.0.0](https://github.com/EnriqueCastagneda/ANDES/releases/tag/v2.0.0):
 
 | Plataforma | Descarga |
 | --- | --- |
-| Linux | [bcrp-downloader-linux-1.1.0.tar.gz](https://github.com/EnriqueCastagneda/ANDES/releases/download/v1.1.0/bcrp-downloader-linux-1.1.0.tar.gz) |
-| Windows | [bcrp-downloader-windows-1.1.0.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v1.1.0/bcrp-downloader-windows-1.1.0.zip) |
-| macOS | [bcrp-downloader-macos-1.1.0.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v1.1.0/bcrp-downloader-macos-1.1.0.zip) |
-| Android (APK) | [bcrp-downloader-apk-1.1.0.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v1.1.0/bcrp-downloader-apk-1.1.0.zip) |
-| Web | [bcrp-downloader-web-1.1.0.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v1.1.0/bcrp-downloader-web-1.1.0.zip) |
+| Linux | [andes-linux-2.0.0.tar.gz](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.0/andes-linux-2.0.0.tar.gz) |
+| Windows | [andes-windows-2.0.0.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.0/andes-windows-2.0.0.zip) |
+| macOS | [andes-macos-2.0.0.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.0/andes-macos-2.0.0.zip) |
+| Android (APK) | [andes-apk-2.0.0.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.0/andes-apk-2.0.0.zip) |
+| Web | [andes-web-2.0.0.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.0/andes-web-2.0.0.zip) |
 
 Consulta la página de [releases](https://github.com/EnriqueCastagneda/ANDES/releases) para descargar otras versiones.
 <!-- DOWNLOADS:END -->

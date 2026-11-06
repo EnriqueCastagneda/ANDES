@@ -291,7 +291,7 @@ def main(page: ft.Page):
             ),
             text_size=14,
             filled=False,
-            border=ft.InputBorder.NONE,
+            border=ft.NoInputBorder(),
             content_padding=ft.Padding.symmetric(horizontal=0, vertical=12),
             hint_style=ft.TextStyle(size=14, color=MUTED),
             expand=True,
