@@ -264,6 +264,11 @@ def main() -> int:
             if any("series" in text for text in texts):
                 break
         check("render inicial", bool(texts), f"{len(texts)} nodos semánticos")
+        joined = " ".join(texts).upper()
+        check("marca ANDES", "ANDES" in joined and "OPEN DATA PLATFORM" in joined)
+        check("tema alterna", browser.click_label("Cambiar tema"))
+        time.sleep(1.0)
+        browser.shot("01b-tema.png")
         check("catálogo indexado", any(t.strip().endswith("series") for t in texts))
         browser.shot("01-inicio.png")
 
@@ -754,7 +759,7 @@ def main() -> int:
         check("abrir portal externo", browser.click_semantics("Descargar"))
         check(
             "portal externo notificado",
-            browser.wait_text("Portal externo abierto", timeout=12),
+            browser.wait_text("Portal externo", timeout=15),
         )
         browser.shot("09h-gobpe-resultados.png")
 

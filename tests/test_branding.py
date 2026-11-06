@@ -1,0 +1,77 @@
+"""Identidad de marca y temas de ANDES."""
+from __future__ import annotations
+
+import json
+
+import flet as ft
+
+from bcrp_downloader import APP_NAME, APP_TAGLINE, APP_VERSION
+from bcrp_downloader.core import branding
+from bcrp_downloader.gui import theme as theme_module
+from bcrp_downloader.gui.theme import ThemeController, resolve_theme
+
+
+class _FakePage:
+    def __init__(self):
+        self.theme = None
+        self.dark_theme = None
+        self.theme_mode = None
+        self.updates = 0
+
+    def update(self):
+        self.updates += 1
+
+
+def test_brand_names():
+    assert APP_NAME == "ANDES"
+    assert APP_TAGLINE == "Open Data Platform"
+    assert APP_VERSION == "2.0.0"
+    assert branding.ACRONYM_ES.startswith("Archivo Nacional")
+    assert branding.ACRONYM_EN.startswith("Andean Network")
+
+
+def test_required_colors_are_exact():
+    dark = branding.theme_dark().color_scheme
+    light = branding.theme_light().color_scheme
+    assert dark.surface.lower() == "#1b293d"
+    assert dark.on_surface.lower() == "#d8b56d"
+    assert light.surface.lower() == "#f1eadc"
+    assert light.on_surface.lower() == "#2a3f48"
+
+
+def test_mark_matches_theme():
+    assert branding.mark_for(ft.ThemeMode.LIGHT).endswith("teal.png")
+    assert branding.mark_for(ft.ThemeMode.DARK).endswith("gold.png")
+
+
+def test_resolve_theme_by_hour():
+    from datetime import datetime
+
+    assert resolve_theme(datetime(2026, 1, 1, 10)) == ft.ThemeMode.LIGHT
+    assert resolve_theme(datetime(2026, 1, 1, 23)) == ft.ThemeMode.DARK
+
+
+def test_controller_applies_both_themes_and_persists(tmp_path, monkeypatch):
+    prefs = tmp_path / "prefs.json"
+    monkeypatch.setattr(theme_module, "_PREFS", str(prefs))
+    page = _FakePage()
+    controller = ThemeController(page)
+    controller.manual = ft.ThemeMode.DARK
+    controller.apply()
+    assert page.theme is not None and page.dark_theme is not None
+    assert page.theme_mode == ft.ThemeMode.DARK
+
+    mode = controller.toggle()
+    assert mode == ft.ThemeMode.LIGHT
+    assert page.theme_mode == ft.ThemeMode.LIGHT
+    assert json.loads(prefs.read_text())["theme_mode"] == "light"
+
+    restored = ThemeController(_FakePage())
+    assert restored.manual == ft.ThemeMode.LIGHT
+
+
+def test_chart_palette_is_distinct():
+    assert len(set(branding.CHART_COLORS)) == len(branding.CHART_COLORS)
+    assert len(branding.CHART_COLORS) >= 8
+    assert all(color.startswith("#") and len(color) == 7
+               for color in branding.CHART_COLORS)

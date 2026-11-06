@@ -140,12 +140,18 @@ def gui(
     """Launch the Flet desktop interface."""
     import flet as ft
 
+    from ..core.paths import ASSETS_DIR
     from ..gui.views import main as gui_main
 
     if web:
-        ft.run(gui_main, port=port, view=ft.AppView.WEB_BROWSER)
+        ft.run(
+            gui_main,
+            port=port,
+            view=ft.AppView.WEB_BROWSER,
+            assets_dir=ASSETS_DIR,
+        )
     else:
-        ft.run(gui_main)
+        ft.run(gui_main, assets_dir=ASSETS_DIR)
 
 
 @app.command()

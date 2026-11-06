@@ -12,8 +12,8 @@ from datetime import datetime
 import flet as ft
 import pandas as pd
 
-from .. import APP_NAME, APP_VERSION
-from ..core import gobpe, portals
+from .. import APP_NAME, APP_TAGLINE, APP_VERSION
+from ..core import branding, gobpe, portals
 from ..core.adapters import get_adapter
 from ..core.api import (
     EXPORT_FORMATS,
@@ -59,9 +59,7 @@ def main(page: ft.Page):
     BADGE_TEXT = ft.Colors.ON_PRIMARY_CONTAINER
     RADIUS = 16
 
-    page.title = APP_NAME
-    page.theme = ft.Theme(color_scheme_seed="#3b82f6")
-    page.dark_theme = ft.Theme(color_scheme_seed="#3b82f6")
+    page.title = f"{APP_NAME} — {APP_TAGLINE}"
     page.bgcolor = BG
     page.window.width = 1180
     page.window.height = 760
@@ -72,6 +70,14 @@ def main(page: ft.Page):
 
     theme_controller = ThemeController(page)
     theme_controller.start()
+
+    brand_logo = ft.Image(
+        src=branding.mark_for(theme_controller.current),
+        width=24,
+        height=24,
+        fit=ft.BoxFit.CONTAIN,
+        tooltip=f"{APP_NAME} — {APP_TAGLINE}",
+    )
 
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -1546,16 +1552,64 @@ def main(page: ft.Page):
             tooltip="Copiar correo al portapapeles",
         )
         items = [
-            ft.Text(APP_NAME, size=16, weight=ft.FontWeight.W_700, color=TEXT),
+            ft.Text(
+                f"{APP_NAME} — {APP_TAGLINE}",
+                size=16,
+                weight=ft.FontWeight.W_700,
+                color=TEXT,
+            ),
             ft.Text(f"Versión {APP_VERSION}", size=12, color=MUTED),
             ft.Divider(height=16, thickness=1, color=BORDER),
             ft.Text(
-                "Explorador y extractor de series estadísticas del Banco "
-                "Central de Reserva del Perú. Busca, filtra y descarga "
-                "metadatos y series históricas en CSV, JSON, XLS, XML, "
-                "TXT o HTML.",
+                f"{branding.ACRONYM_ES} (ES)",
+                size=12,
+                weight=ft.FontWeight.W_600,
+                color=TEXT,
+            ),
+            ft.Text(
+                f"{branding.ACRONYM_EN} (EN)",
+                size=12,
+                weight=ft.FontWeight.W_600,
+                color=TEXT,
+            ),
+            ft.Text(
+                "Plataforma de acceso, integración, exploración y consulta "
+                "de estadísticas y datos abiertos. Reduce las barreras de "
+                "acceso a la información pública para investigación, "
+                "análisis, planificación, docencia y toma de decisiones.",
                 size=12,
                 color=TEXT,
+            ),
+            ft.Text(
+                "Principios: acceso abierto, transparencia, reproducibilidad "
+                "y reconocimiento de las fuentes originales. Los datos "
+                "pertenecen a sus instituciones productoras.",
+                size=12,
+                color=TEXT,
+            ),
+            ft.Text(
+                "Fuentes integradas: BCRP, MEF, INEI y portales "
+                "estadísticos de Gob.pe.",
+                size=11,
+                color=MUTED,
+            ),
+            ft.Divider(height=12, thickness=1, color=BORDER),
+            ft.Text(
+                f"Repositorio: {branding.REPOSITORY_URL}",
+                size=11,
+                color=MUTED,
+                selectable=True,
+            ),
+            ft.Text(
+                f"Licencia del software: {branding.LICENSE_NAME}",
+                size=11,
+                color=MUTED,
+            ),
+            ft.Text(
+                "La marca ANDES y su identidad gráfica se rigen por "
+                "TRADEMARKS.md, independiente de la licencia del código.",
+                size=11,
+                color=MUTED,
             ),
             ft.Divider(height=12, thickness=1, color=BORDER),
             ft.Text(
@@ -1567,11 +1621,6 @@ def main(page: ft.Page):
             ft.Stack([email_btn, bubble], clip_behavior=ft.ClipBehavior.NONE),
             ft.Text(
                 "Stack: Python · Flet 1.0.5 · pandas · requests",
-                size=11,
-                color=MUTED,
-            ),
-            ft.Text(
-                "Fuente de datos: Banco Central de Reserva del Perú",
                 size=11,
                 color=MUTED,
             ),
@@ -1615,7 +1664,7 @@ def main(page: ft.Page):
             title=ft.Row(
                 [
                     ft.Icon(ft.Icons.INFO_OUTLINE, color=ACCENT, size=20),
-                    ft.Text("Acerca de", size=18, weight=ft.FontWeight.W_700, color=TEXT),
+                    ft.Text("Acerca de ANDES", size=18, weight=ft.FontWeight.W_700, color=TEXT),
                 ],
                 spacing=8,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -1648,6 +1697,7 @@ def main(page: ft.Page):
         e.control.icon = (
             ft.Icons.LIGHT_MODE if mode == ft.ThemeMode.LIGHT else ft.Icons.DARK_MODE
         )
+        brand_logo.src = branding.mark_for(mode)
         page.update()
 
     history_state = {"open": False}
@@ -1760,7 +1810,7 @@ def main(page: ft.Page):
     footer = ft.Row(
         [
             ft.TextButton(
-                "Acerca de",
+                "Acerca de ANDES",
                 icon=ft.Icons.INFO_OUTLINE,
                 on_click=show_about,
                 style=ft.ButtonStyle(color=MUTED, text_style=ft.TextStyle(size=12)),
@@ -2034,10 +2084,18 @@ def main(page: ft.Page):
             [
                 ft.Row(
                     [
-                        ft.Text("Catálogo de Series", size=18, weight=ft.FontWeight.W_700, color=TEXT),
+                        brand_logo,
+                        ft.Text(
+                            APP_NAME,
+                            size=18,
+                            weight=ft.FontWeight.W_700,
+                            color=TEXT,
+                        ),
+                        ft.Text(APP_TAGLINE, size=11, color=MUTED),
                         ft.Container(expand=True),
                         count_text,
                     ],
+                    spacing=8,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
                 ft.Text("Explora por institución o palabra clave", size=12, color=MUTED),
