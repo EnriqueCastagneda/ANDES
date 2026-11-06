@@ -63,6 +63,8 @@ sigue la hora local (claro 06:00–17:59).
 
 - Contraste alto entre fondo y texto en ambos temas.
 - Controles con tooltip y etiquetas accesibles.
+- Selector de institución con globo de nombre completo al pasar el puntero
+  sobre cada sigla; el globo se desvanece solo.
 - Navegación por teclado en la lista de series.
 - Diseño de una columna en móvil y adaptación de paneles en tablet.
 

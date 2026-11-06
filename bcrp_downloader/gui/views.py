@@ -834,7 +834,7 @@ def main(page: ft.Page):
     filtro_actual_hasta = make_filter_date("Actualización hasta")
 
     def gather_filters():
-        institution = (institution_dd.value or "").strip()
+        institution = institution_state["value"]
         if not institution:
             # «Todas»: solo búsqueda por palabras clave, sin filtros de fuente.
             return {}
@@ -873,7 +873,7 @@ def main(page: ft.Page):
     def search_current(query: str, limit: int | None = 300):
         """Busca en la institución activa; delega en su adaptador nativo."""
         filters = gather_filters()
-        institution = (institution_dd.value or "").strip()
+        institution = institution_state["value"]
         if institution:
             try:
                 return get_adapter(institution).search(
@@ -1054,7 +1054,7 @@ def main(page: ft.Page):
         if not codes:
             notify("Selecciona una serie de la lista", ft.Colors.AMBER)
             return
-        institution = (institution_dd.value or "").strip()
+        institution = institution_state["value"]
         source = get_source(institution)
         fixed = bool(source and source.fixed_period)
         if not fixed and (
@@ -1246,36 +1246,37 @@ def main(page: ft.Page):
             },
         )
 
-    def institution_option(key: str, label: str) -> ft.dropdown.Option:
-        """Opción con globo de nombre completo al pasar el puntero."""
-        source = get_source(key)
-        full = source.name if source else ""
-        tooltip = full if full and full != label else None
-        return ft.dropdown.Option(key=key, text=label, tooltip=tooltip)
-
-    institution_dd = ft.Dropdown(
-        label="Institución",
-        value="",
+    institution_state = {
+        "value": "",
+        "options": [("", "Todas")] + list(institution_options()),
+    }
+    institution_text = ft.Text("Todas", size=13, color=TEXT)
+    institution_field = ft.Container(
         width=260,
-        filled=True,
-        fill_color=SURFACE_2,
-        text_size=13,
-        enable_filter=True,
-        menu_height=420,
-        label_style=ft.TextStyle(size=12, color=MUTED),
-        options=[ft.dropdown.Option(key="", text="Todas")]
-        + [
-            institution_option(source_id, label)
-            for source_id, label in institution_options()
-        ],
-        border={
-            ft.ControlState.DEFAULT: ft.OutlineInputBorder(
-                border_radius=12, side=ft.BorderSide(1, BORDER)
-            ),
-            ft.ControlState.FOCUSED: ft.OutlineInputBorder(
-                border_radius=12, side=ft.BorderSide(1, ACCENT)
-            ),
-        },
+        height=48,
+        padding=ft.Padding.symmetric(horizontal=12, vertical=5),
+        bgcolor=SURFACE_2,
+        border=ft.Border.all(1, BORDER),
+        border_radius=12,
+        on_click=lambda e: open_institution_menu(e),
+        tooltip="Elegir institución",
+        content=ft.Column(
+            [
+                ft.Text("Institución", size=9, color=MUTED),
+                ft.Row(
+                    [
+                        institution_text,
+                        ft.Container(expand=True),
+                        ft.Icon(
+                            ft.Icons.ARROW_DROP_DOWN, size=18, color=MUTED
+                        ),
+                    ],
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+            ],
+            spacing=0,
+            tight=True,
+        ),
     )
     adv_area = make_adv_dd("Área que publica", "Área que publica")
     adv_fuente = make_adv_dd("Fuente", "Fuente")
@@ -1415,7 +1416,7 @@ def main(page: ft.Page):
         """True when search or the active institution's filters are set."""
         if (search_box.value or "").strip():
             return True
-        institution = (institution_dd.value or "").strip()
+        institution = institution_state["value"]
         if not institution:
             return False
         if institution == "bcrp":
@@ -2094,7 +2095,7 @@ def main(page: ft.Page):
     )
 
     def update_filter_toggle():
-        active = bool(institution_dd.value)
+        active = bool(institution_state["value"])
         filters_host.visible = active and filters_ui["open"]
         filters_toggle.disabled = not active
         filters_toggle.icon = (
@@ -2152,7 +2153,7 @@ def main(page: ft.Page):
             return
 
     def on_institution_change(e):
-        institution = institution_dd.value or ""
+        institution = institution_state["value"]
         source = get_source(institution)
         fixed = bool(source and source.fixed_period)
         bcrp_section.visible = institution == "bcrp"
@@ -2210,7 +2211,125 @@ def main(page: ft.Page):
         reload_dimension_options(institution)
         page.update()
 
-    institution_dd.on_select = on_institution_change
+
+
+    def select_institution(key: str, label: str):
+        institution_state["value"] = key
+        institution_text.value = label
+        page.pop_dialog()
+        on_institution_change(None)
+
+    def open_institution_menu(e=None):
+        """Selector con globo de nombre completo por institución."""
+        options = institution_state["options"]
+        mobile = (page.width or 0) < 600
+        listing = ft.ListView(spacing=2, expand=True)
+
+        def render(query: str = ""):
+            needle = query.strip().lower()
+            listing.controls.clear()
+            for key, label in options:
+                if needle and needle not in label.lower():
+                    continue
+                source = get_source(key) if key else None
+                full = source.name if source else "Todas las instituciones"
+                tip = full if full and full != label else None
+                listing.controls.append(
+                    ft.TextButton(
+                        content=ft.Row(
+                            [
+                                ft.Text(label, size=12, color=TEXT),
+                                ft.Container(expand=True),
+                            ],
+                            alignment=ft.MainAxisAlignment.START,
+                        ),
+                        tooltip=tip,
+                        width=320,
+                        on_click=lambda ev, k=key, name=label: (
+                            select_institution(k, name)
+                        ),
+                        style=ft.ButtonStyle(
+                            padding=ft.Padding.symmetric(
+                                horizontal=8, vertical=2
+                            ),
+                            overlay_color=ft.Colors.with_opacity(0.08, ACCENT),
+                        ),
+                    )
+                )
+
+        search = ft.TextField(
+            hint_text="Buscar institución…",
+            dense=True,
+            filled=True,
+            fill_color=SURFACE_2,
+            text_size=12,
+            border_radius=10,
+            on_change=lambda ev: render(ev.control.value),
+        )
+        render("")
+        content = ft.Column(
+            [
+                search,
+                ft.Text(
+                    f"{len(options) - 1} instituciones",
+                    size=11,
+                    color=MUTED,
+                ),
+                ft.Container(listing, height=380 if not mobile else 320),
+            ],
+            spacing=8,
+            tight=True,
+        )
+        if mobile:
+            page.show_dialog(
+                ft.BottomSheet(
+                    content=ft.Container(
+                        content=ft.Column(
+                            [
+                                ft.Text(
+                                    "Institución",
+                                    size=16,
+                                    weight=ft.FontWeight.W_700,
+                                    color=TEXT,
+                                ),
+                                content,
+                            ],
+                            spacing=8,
+                            tight=True,
+                        ),
+                        padding=16,
+                    ),
+                )
+            )
+            return
+        page.show_dialog(
+            ft.AlertDialog(
+                modal=True,
+                bgcolor=SURFACE,
+                shape=ft.RoundedRectangleBorder(radius=16),
+                title=ft.Row(
+                    [
+                        ft.Icon(ft.Icons.ACCOUNT_BALANCE, color=ACCENT, size=20),
+                        ft.Text(
+                            "Institución",
+                            size=18,
+                            weight=ft.FontWeight.W_700,
+                            color=TEXT,
+                        ),
+                    ],
+                    spacing=8,
+                ),
+                content=ft.Container(width=350, content=content),
+                actions=[
+                    ft.TextButton(
+                        "Cerrar",
+                        on_click=lambda ev: page.pop_dialog(),
+                        style=ft.ButtonStyle(color=MUTED),
+                    )
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+        )
 
     is_mobile = (page.width or page.window.width or 1180) < 600
     panel_height = 520 if is_mobile else max(560, (page.height or page.window.height or 760) - 40)
@@ -2239,7 +2358,7 @@ def main(page: ft.Page):
                 ft.Text("Explora por institución o palabra clave", size=12, color=MUTED),
                 search_box,
                 ft.Row(
-                    [institution_dd, filters_toggle],
+                    [institution_field, filters_toggle],
                     spacing=8,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
@@ -2363,10 +2482,9 @@ def main(page: ft.Page):
         total = 0
         try:
             total = catalog_count()
-            institution_dd.options = [ft.dropdown.Option(key="", text="Todas")] + [
-                institution_option(source_id, label)
-                for source_id, label in catalog_institutions()
-            ]
+            institution_state["options"] = [("", "Todas")] + list(
+                catalog_institutions()
+            )
             for dropdown, field in (
                 (adv_area, "area"),
                 (adv_fuente, "source"),
@@ -2415,10 +2533,9 @@ def main(page: ft.Page):
                 return
             total = len(legacy)
             df_metadata = legacy.head(300)
-            institution_dd.options = [ft.dropdown.Option(key="", text="Todas")] + [
-                institution_option(source_id, label)
-                for source_id, label in institution_options()
-            ]
+            institution_state["options"] = [("", "Todas")] + list(
+                institution_options()
+            )
             for dropdown, column in (
                 (adv_area, "Área que publica"),
                 (adv_fuente, "Fuente"),
