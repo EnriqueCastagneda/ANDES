@@ -1747,12 +1747,6 @@ def main(page: ft.Page):
                 size=11,
                 color=MUTED,
             ),
-            ft.TextButton(
-                "Sitios de datos",
-                icon=ft.Icons.PUBLIC,
-                on_click=show_sites,
-                style=ft.ButtonStyle(color=ACCENT),
-            ),
             ft.Divider(height=12, thickness=1, color=BORDER),
             ft.Text(
                 f"Repositorio: {branding.REPOSITORY_URL}",
@@ -1787,10 +1781,21 @@ def main(page: ft.Page):
         ]
         if mobile:
             items.append(
-                ft.TextButton(
-                    "Cerrar",
-                    on_click=lambda e: page.pop_dialog(),
-                    style=ft.ButtonStyle(color=MUTED),
+                ft.Row(
+                    [
+                        ft.TextButton(
+                            "Sitios",
+                            icon=ft.Icons.PUBLIC,
+                            on_click=show_sites,
+                            style=ft.ButtonStyle(color=ACCENT),
+                        ),
+                        ft.TextButton(
+                            "Cerrar",
+                            on_click=lambda e: page.pop_dialog(),
+                            style=ft.ButtonStyle(color=MUTED),
+                        ),
+                    ],
+                    spacing=4,
                 )
             )
         return ft.Column(items, spacing=8)
