@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Descubre la jerarquía de un portal con Chromium local (sin TinyFish).
+"""Descubre la jerarquía de un portal con Chromium local.
 
 Abre la URL, captura peticiones XHR/fetch y los ``<select>`` del DOM, y escribe
 un borrador JSON. Luego se cura a mano en ``fixtures/<portal>/hierarchy.json``.
