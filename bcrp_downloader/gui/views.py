@@ -61,7 +61,7 @@ def main(page: ft.Page):
 
     page.title = f"{APP_NAME} — {APP_TAGLINE}"
     try:
-        page.window.icon = branding.ASSETS["mark_dark"]
+        page.window.icon = branding.ASSETS["icon"]
     except Exception:
         pass
     page.bgcolor = BG
