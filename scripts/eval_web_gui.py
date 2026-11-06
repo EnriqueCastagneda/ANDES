@@ -256,16 +256,20 @@ def main() -> int:
     try:
         # 1. arranque y catálogo
         texts: list[str] = []
+        joined = ""
         deadline = time.time() + 45
         while time.time() < deadline:
             browser.js("document.querySelector('flt-semantics-placeholder')?.click()")
             time.sleep(1.0)
             texts = browser.texts()
-            if any("series" in text for text in texts):
+            joined = " ".join(texts).upper()
+            if "ACERCA DE ANDES" in joined and any(
+                text.strip().replace(",", "").isdigit() for text in texts
+            ):
                 break
         check("render inicial", bool(texts), f"{len(texts)} nodos semánticos")
-        joined = " ".join(texts).upper()
-        check("marca ANDES", "ANDES" in joined and "OPEN DATA PLATFORM" in joined)
+        check("marca ANDES", "ACERCA DE ANDES" in joined
+              and "OPEN DATA PLATFORM" in joined)
         check("tema alterna", browser.click_label("Cambiar tema"))
         time.sleep(1.0)
         browser.shot("01b-tema.png")
@@ -285,7 +289,11 @@ def main() -> int:
         time.sleep(0.8)
         browser.click_semantics("Cerrar")
         time.sleep(0.8)
-        check("catálogo indexado", any(t.strip().endswith("series") for t in texts))
+        texts = browser.texts()
+        check(
+            "catálogo indexado",
+            any(t.strip().replace(",", "").isdigit() for t in texts),
+        )
         browser.shot("01-inicio.png")
 
         # 2. modo «Todas»: solo búsqueda por palabra clave

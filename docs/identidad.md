@@ -37,7 +37,10 @@ ambos temas). No se usa el color como único portador de información.
 - `assets/andes_logo_claro.png`: logotipo horizontal oscuro con acento dorado.
 - `assets/andes_isotipo_oscuro.png`: isotipo sobre fondo `#1A1C33`.
 - `assets/andes_isotipo_claro.png`: isotipo sobre fondo `#F8F7EE`.
-- Los `.svg` correspondientes son la fuente vectorial oficial.
+- Los `.svg` correspondientes son la fuente vectorial oficial, sin fondo.
+- `assets/icon.png` y `assets/icon/` (16–1024 px, `.ico`, `.icns`, `.svg`):
+  icono de la aplicación para escritorio, web y compilaciones.
+- `assets/favicon.png` y `assets/icons/`: favicon e iconos PWA.
 
 Composición horizontal: isotipo + «ANDES» + «Open Data Platform». El nombre
 tiene mayor jerarquía que el descriptor.

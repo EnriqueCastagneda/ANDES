@@ -67,6 +67,8 @@ ASSETS = {
     "logo_dark": "andes_logo_oscuro.png",
     "mark_light": "andes_isotipo_claro.png",
     "mark_dark": "andes_isotipo_oscuro.png",
+    "icon": "icon.png",
+    "icon_dir": "icon",
 }
 
 
