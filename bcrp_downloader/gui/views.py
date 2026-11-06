@@ -280,22 +280,40 @@ def main(page: ft.Page):
 
     # --- Panel Izquierdo: Catálogo ---
     # Buscador flotante con icono y foco acentuado
-    search_box = ft.TextField(
-        hint_text="Buscar serie, código o categoría…",
-        prefix_icon=ft.Icons.SEARCH,
-        text_size=14,
-        filled=True,
-        fill_color=SURFACE_2,
-        content_padding=ft.Padding.symmetric(horizontal=14, vertical=12),
-        hint_style=ft.TextStyle(size=14, color=MUTED),
-        border={
-            ft.ControlState.DEFAULT: ft.OutlineInputBorder(
-                border_radius=14, side=ft.BorderSide(1, BORDER)
+    def make_search_box() -> ft.TextField:
+        return ft.TextField(
+            hint_text="Buscar serie, código o categoría…",
+            text_size=14,
+            filled=False,
+            border=ft.InputBorder.NONE,
+            content_padding=ft.Padding.symmetric(horizontal=0, vertical=12),
+            hint_style=ft.TextStyle(size=14, color=MUTED),
+            expand=True,
+        )
+
+    search_box = make_search_box()
+    search_row = ft.Row(
+        [
+            search_box,
+            ft.Icon(ft.Icons.SEARCH, size=18, color=MUTED),
+            ft.IconButton(
+                ft.Icons.CLEAR,
+                icon_size=18,
+                icon_color=MUTED,
+                tooltip="Limpiar búsqueda",
+                on_click=lambda e: clear_search(),
             ),
-            ft.ControlState.FOCUSED: ft.OutlineInputBorder(
-                border_radius=14, side=ft.BorderSide(1, ACCENT)
-            ),
-        },
+        ],
+        spacing=0,
+        tight=True,
+        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+    )
+    search_bar = ft.Container(
+        content=search_row,
+        bgcolor=SURFACE_2,
+        border=ft.Border.all(1, BORDER),
+        border_radius=14,
+        padding=ft.Padding.symmetric(horizontal=14, vertical=0),
     )
 
     # La lista tiene su propio scroll; el pie del panel queda fijo debajo.
@@ -898,6 +916,14 @@ def main(page: ft.Page):
                 pass
         return search_catalog(query, filters=filters, limit=limit)
 
+    def clear_search():
+        nonlocal search_box
+        search_box = make_search_box()
+        search_box.on_change = on_search_change
+        search_row.controls[0] = search_box
+        apply_filters(None)
+        page.update()
+
     # Aplica filtros de los desplegables + búsqueda de texto (SQLite FTS5)
     def apply_filters(e):
         if not metadata_state["ready"]:
@@ -1394,6 +1420,7 @@ def main(page: ft.Page):
                 ft.Row([filtro_actual_desde, filtro_actual_hasta], spacing=10),
                 ft.Row(
                     [
+                        ft.Icon(ft.Icons.SEARCH, size=14, color=MUTED),
                         ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED)),
                         ft.TextButton(
                             "Descargar listado",
@@ -1494,9 +1521,13 @@ def main(page: ft.Page):
     async def on_keyboard(e):
         raw = e.key or ""
         key = raw.replace(" ", "").lower()
-        if key == "escape" and history_state.get("open"):
-            close_history()
-            return
+        if key == "escape":
+            if history_state.get("open"):
+                close_history()
+                return
+            if dialog_state["about"] or dialog_state["sites"]:
+                close_dialog()
+                return
         if not visible_cards:
             return
         if key in ("arrowdown", "arrowup"):
@@ -1540,8 +1571,20 @@ def main(page: ft.Page):
                 rows.append((site["name"], site["url"]))
         return rows
 
+    dialog_state = {"about": False, "sites": False}
+
+    def close_dialog():
+        """Cierra el diálogo superior y actualiza el estado."""
+        if dialog_state["sites"]:
+            dialog_state["sites"] = False
+        elif dialog_state["about"]:
+            dialog_state["about"] = False
+        page.pop_dialog()
+        page.update()
+
     def show_sites(e=None):
         """Lista desplegable de portales con enlace oculto en el nombre."""
+        dialog_state["sites"] = True
         entries = sites_data()
         mobile = (page.width or 0) < 600
         listing = ft.ListView(spacing=2, expand=True)
@@ -1622,7 +1665,7 @@ def main(page: ft.Page):
                                 content,
                                 ft.TextButton(
                                     "Cerrar",
-                                    on_click=lambda ev: page.pop_dialog(),
+                                    on_click=lambda ev: close_dialog(),
                                 ),
                             ],
                             spacing=8,
@@ -1802,8 +1845,11 @@ def main(page: ft.Page):
 
     def show_about(e):
         mobile = (page.width or 0) < 600
+        dialog_state["about"] = True
 
         def dismissed(ev=None):
+            dialog_state["about"] = False
+            dialog_state["sites"] = False
             bubble_state["control"] = None
 
         content = build_about_content(mobile)
@@ -1844,7 +1890,7 @@ def main(page: ft.Page):
                 ),
                 ft.Button(
                     "Cerrar",
-                    on_click=lambda ev: page.pop_dialog(),
+                    on_click=lambda ev: close_dialog(),
                     style=ft.ButtonStyle(
                         bgcolor=ACCENT,
                         color=ON_ACCENT,
@@ -2024,7 +2070,10 @@ def main(page: ft.Page):
             ft.Text("Filtros del Portal de Transparencia (MEF)", size=11, color=MUTED),
             mef_grid,
             ft.Row(
-                [ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED))],
+                [
+                    ft.Icon(ft.Icons.SEARCH, size=14, color=MUTED),
+                    ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED)),
+                ],
                 spacing=4,
             ),
         ],
@@ -2045,7 +2094,10 @@ def main(page: ft.Page):
             ft.Text("Filtros de INEI (población distrital)", size=11, color=MUTED),
             inei_grid,
             ft.Row(
-                [ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED))],
+                [
+                    ft.Icon(ft.Icons.SEARCH, size=14, color=MUTED),
+                    ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED)),
+                ],
                 spacing=4,
             ),
         ],
@@ -2066,7 +2118,10 @@ def main(page: ft.Page):
             ft.Text("Filtros de INEI (índice temático)", size=11, color=MUTED),
             inei_tematico_grid,
             ft.Row(
-                [ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED))],
+                [
+                    ft.Icon(ft.Icons.SEARCH, size=14, color=MUTED),
+                    ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED)),
+                ],
                 spacing=4,
             ),
         ],
@@ -2087,7 +2142,10 @@ def main(page: ft.Page):
             ft.Text("Filtros de portales de Gob.pe", size=11, color=MUTED),
             gobpe_grid,
             ft.Row(
-                [ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED))],
+                [
+                    ft.Icon(ft.Icons.SEARCH, size=14, color=MUTED),
+                    ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED)),
+                ],
                 spacing=4,
             ),
         ],
@@ -2357,7 +2415,7 @@ def main(page: ft.Page):
                 actions=[
                     ft.TextButton(
                         "Cerrar",
-                        on_click=lambda ev: page.pop_dialog(),
+                        on_click=lambda ev: close_dialog(),
                         style=ft.ButtonStyle(color=MUTED),
                     )
                 ],
@@ -2383,7 +2441,7 @@ def main(page: ft.Page):
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
                 ft.Text("Explora por institución o palabra clave", size=12, color=MUTED),
-                search_box,
+                search_bar,
                 ft.Row(
                     [institution_field, filters_toggle],
                     spacing=8,
