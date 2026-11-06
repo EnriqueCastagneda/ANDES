@@ -68,6 +68,20 @@ SOURCES: tuple[Source, ...] = (
             ),
         },
     ),
+    Source(
+        id="inei",
+        name="Instituto Nacional de Estadística e Informática",
+        short_name="INEI",
+        base_url="https://www.gob.pe/institucion/inei",
+        metadata_url=(
+            "https://www.gob.pe/institucion/inei/"
+            "informes-publicaciones/6894980-peru-poblacion-total-proyectada-al-30-"
+            "de-junio-de-cada-ano-segun-departamento-provincia-y-distrito-2018-2026"
+        ),
+        filter_options={
+            "start": tuple(str(year) for year in range(2018, 2027)),
+        },
+    ),
 )
 
 DEFAULT_SOURCE = "bcrp"

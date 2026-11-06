@@ -63,6 +63,9 @@ _DIMENSIONS: dict[str, tuple[Dimension, ...]] = {
         _dim("fuente", "Fuente de financiamiento"),
         _dim("grupo_publicacion", "Programa"),
     ),
+    "inei": (
+        _dim("area", "Departamento"),
+    ),
 }
 
 _ENDPOINTS: dict[str, dict[str, str]] = {

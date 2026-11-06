@@ -843,9 +843,10 @@ def main(page: ft.Page):
                 }
             )
             return filters
-        # Filtros propios de MEF (y de futuras instituciones).
+        # Filtros propios de cada institución (MEF, INEI, ...).
         filters = {"institucion": institution}
-        filters.update({key: widget.value for key, widget in mef_controls.items()})
+        controls = mef_controls if institution == "mef" else inei_controls
+        filters.update({key: widget.value for key, widget in controls.items()})
         return filters
 
     def search_current(query: str, limit: int | None = 300):
@@ -930,12 +931,13 @@ def main(page: ft.Page):
                 notify(f"Guardado: {filepath}", ft.Colors.GREEN)
             return filepath
 
-        if institucion == "MEF":
+        if institucion in ("MEF", "INEI"):
+            adapter = get_adapter(institucion.lower())
             try:
-                df_result = get_adapter("mef").fetch([code], start, end)
+                df_result = adapter.fetch([code], start, end)
             except Exception as ex:
                 if not silent:
-                    notify(f"Error MEF: {ex}")
+                    notify(f"Error {institucion}: {ex}")
                 return None
             if df_result.empty:
                 if not silent:
@@ -1045,6 +1047,8 @@ def main(page: ft.Page):
                 groups: dict[str, list[str]] = {}
                 if institution.upper() == "MEF":
                     groups["MEF"] = list(codes)
+                elif institution.upper() == "INEI":
+                    groups["INEI"] = list(codes)
                 else:
                     for code in codes:
                         info = series_info(code)
@@ -1061,6 +1065,11 @@ def main(page: ft.Page):
                     if frequency == "MEF":
                         try:
                             frame = get_adapter("mef").fetch(group, start, end)
+                        except Exception:
+                            frame = None
+                    elif frequency == "INEI":
+                        try:
+                            frame = get_adapter("inei").fetch(group, start, end)
                         except Exception:
                             frame = None
                     elif frequency:
@@ -1195,10 +1204,19 @@ def main(page: ft.Page):
         for dimension in MEF_DIMENSIONS
     }
 
+    # Filtros propios de INEI (población distrital).
+    INEI_DIMENSIONS = portals.spec_for("inei").dimensions
+    inei_controls = {
+        dimension.key: make_adv_dd(dimension.label, dimension.key)
+        for dimension in INEI_DIMENSIONS
+    }
+
     def clear_filters(e):
         for dd in (adv_area, adv_fuente, adv_categoria, adv_grupo):
             dd.value = ""
         for dd in mef_controls.values():
+            dd.value = ""
+        for dd in inei_controls.values():
             dd.value = ""
         for dc in (filtro_creacion_desde, filtro_creacion_hasta, filtro_actual_desde, filtro_actual_hasta):
             dc.controls[0].value = ""
@@ -1298,7 +1316,8 @@ def main(page: ft.Page):
                 if (control.controls[0].value or "").strip():
                     return True
             return False
-        return any((dd.value or "").strip() for dd in mef_controls.values())
+        controls = mef_controls if institution == "mef" else inei_controls
+        return any((dd.value or "").strip() for dd in controls.values())
 
     def update_master_state():
         active = has_active_filters()
@@ -1680,6 +1699,27 @@ def main(page: ft.Page):
         visible=False,
     )
 
+    inei_grid = ft.ResponsiveRow(
+        list(inei_controls.values()),
+        spacing=10,
+        run_spacing=10,
+    )
+    for ctrl in inei_grid.controls:
+        ctrl.col = {"xs": 12, "sm": 6}
+
+    inei_section = ft.Column(
+        [
+            ft.Text("Filtros de INEI (población distrital)", size=11, color=MUTED),
+            inei_grid,
+            ft.Row(
+                [ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED))],
+                spacing=4,
+            ),
+        ],
+        spacing=10,
+        visible=False,
+    )
+
     bcrp_section = ft.Column(
         [frequency_box, advanced_panel],
         spacing=10,
@@ -1688,7 +1728,7 @@ def main(page: ft.Page):
 
     filters_ui = {"open": False}
     filters_host = ft.Column(
-        [bcrp_section, mef_section], spacing=10, visible=False
+        [bcrp_section, mef_section, inei_section], spacing=10, visible=False
     )
     filters_toggle = ft.IconButton(
         icon=ft.Icons.TUNE,
@@ -1725,6 +1765,7 @@ def main(page: ft.Page):
         institution = institution_dd.value or ""
         bcrp_section.visible = institution == "bcrp"
         mef_section.visible = institution == "mef"
+        inei_section.visible = institution == "inei"
         if institution != "bcrp":
             set_frequency("Todos", repaint=False)
         filters_ui["open"] = False
@@ -1732,6 +1773,8 @@ def main(page: ft.Page):
         for dropdown in (adv_area, adv_fuente, adv_categoria, adv_grupo):
             dropdown.value = ""
         for dropdown in mef_controls.values():
+            dropdown.value = ""
+        for dropdown in inei_controls.values():
             dropdown.value = ""
         for control in (
             filtro_creacion_desde,
@@ -1754,6 +1797,10 @@ def main(page: ft.Page):
             start_input.tooltip = "Periodo BCRP: 2024-1 o 2024-01-15"
             end_input.tooltip = "Periodo BCRP: 2024-12"
             params_hint.value = "Periodos BCRP: 2024-1 · 2024-01-15"
+        elif institution.upper() == "INEI":
+            start_input.tooltip = "Periodo INEI: 2018"
+            end_input.tooltip = "Periodo INEI: 2026"
+            params_hint.value = "Periodos INEI: año (2018-2026)"
         else:
             start_input.tooltip = "Elige una institución"
             end_input.tooltip = "Elige una institución"
@@ -1928,6 +1975,13 @@ def main(page: ft.Page):
                     ft.dropdown.Option(key=value, text=value)
                     for value in institution_filter_options("mef", field)
                 ]
+            for dimension in INEI_DIMENSIONS:
+                dropdown = inei_controls[dimension.key]
+                field = portals.catalog_field(dimension.key)
+                dropdown.options = [ft.dropdown.Option(key="", text="Todos")] + [
+                    ft.dropdown.Option(key=value, text=value)
+                    for value in institution_filter_options("inei", field)
+                ]
             df_metadata = search_catalog("", limit=300)
         except Exception as ex:
             notify(f"Catálogo rápido no disponible: {ex}", ft.Colors.AMBER)
@@ -1953,6 +2007,8 @@ def main(page: ft.Page):
                     ft.dropdown.Option(key=value, text=value) for value in values
                 ]
             for dropdown in mef_controls.values():
+                dropdown.options = [ft.dropdown.Option(key="", text="Todos")]
+            for dropdown in inei_controls.values():
                 dropdown.options = [ft.dropdown.Option(key="", text="Todos")]
 
         metadata_state["ready"] = True

@@ -411,6 +411,73 @@ def main() -> int:
             rows = (outputs / mef_files[0]).read_text(encoding="utf-8-sig").splitlines()
             check("MEF histórico completo", len(rows) > 150, f"{len(rows)} filas")
         browser.shot("08-mef-descarga.png")
+
+        # 8b. institución INEI: población distrital
+        browser.click_at({"x": 146, "y": 190})
+        time.sleep(0.6)
+        browser.click_at({"x": 146, "y": 390})  # opción INEI
+        time.sleep(1.2)
+        texts = " ".join(browser.texts()).upper()
+        check("INEI listado como institución", "INEI" in texts)
+        browser.click_at({"x": 328, "y": 190})  # desplegar filtros INEI
+        time.sleep(1.0)
+        texts = " ".join(browser.texts()).upper()
+        check("panel INEI visible", "FILTROS DE INEI" in texts)
+        browser.shot("09-inei-panel.png")
+        browser.click_at({"x": 328, "y": 190})  # plegar para ver la lista
+        time.sleep(0.8)
+
+        browser.js("document.querySelector('input')?.focus()")
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "rawKeyDown", "key": "a", "code": "KeyA",
+            "windowsVirtualKeyCode": 65, "modifiers": 2,
+        })
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "keyUp", "key": "a", "code": "KeyA",
+            "windowsVirtualKeyCode": 65, "modifiers": 2,
+        })
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "rawKeyDown", "key": "Backspace",
+            "windowsVirtualKeyCode": 8,
+        })
+        browser.cmd("Input.dispatchKeyEvent", {
+            "type": "keyUp", "key": "Backspace", "windowsVirtualKeyCode": 8,
+        })
+        browser.cmd("Input.insertText", {"text": "chimbote"})
+        labels = ""
+        deadline = time.time() + 20
+        while time.time() < deadline:
+            labels = " ".join(browser.labels()).upper()
+            if "INEI-POP-021801" in labels:
+                break
+            time.sleep(0.5)
+        check("INEI encuentra distrito", "INEI-POP-021801" in labels)
+        check(
+            "INEI selecciona serie",
+            browser.click_label("Seleccionar serie\nINEI-POP-021801"),
+        )
+        time.sleep(0.5)
+        browser.shot("09b-inei-resultados.png")
+
+        check("fecha INEI inicio", browser.type_into("Fecha inicio", "2018"))
+        check("fecha INEI fin", browser.type_into("Fecha fin", "2026"))
+        check("descargar INEI", browser.click_semantics("Descargar"))
+        deadline = time.time() + 60
+        inei_files: list[str] = []
+        while time.time() < deadline:
+            inei_files = [
+                name for name in os.listdir(outputs)
+                if "INEI-POP" in name and (outputs / name).stat().st_mtime >= started - 1
+            ]
+            if inei_files:
+                break
+            time.sleep(1)
+        check("archivo INEI generado", bool(inei_files), ", ".join(inei_files))
+        if inei_files:
+            rows = (outputs / inei_files[0]).read_text(encoding="utf-8-sig").splitlines()
+            check("INEI histórico completo", len(rows) == 10, f"{len(rows)} filas")
+        browser.shot("09c-inei-descarga.png")
+
         browser.click_at({"x": 190, "y": 130})
         time.sleep(0.4)
         browser.cmd("Input.dispatchKeyEvent", {

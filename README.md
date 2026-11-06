@@ -40,6 +40,8 @@ de IA.
 - **Exportación** a CSV, JSON, XLS, XML, TXT y HTML (XLS binario real).
 - **Estadísticas MEF**: 61 cuadros `.xls` convertidos a series anuales y
   trimestrales, además de las transferencias mensuales.
+- **Población INEI**: 1 892 distritos con proyección 2018–2026, una serie por
+  distrito (`INEI-POP-<ubigeo>`), búsqueda por nombre o ubigeo.
 - **Detección de documentación PDF** en las descripciones de las series.
 - **Caché local** de metadatos y suites de pruebas con mocks.
 
