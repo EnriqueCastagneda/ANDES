@@ -178,6 +178,32 @@ def institutions(portals: list[dict] | None = None) -> list[dict]:
     ]
 
 
+def sites(portals: list[dict] | None = None) -> list[dict]:
+    """Un sitio por institución: nombre completo y URL representativa."""
+    portals = portals if portals is not None else load_registry()
+    best: dict[str, dict] = {}
+    for portal in portals:
+        key = portal.get("institution_id")
+        if not key:
+            continue
+        name = (
+            portal.get("institution_full")
+            or portal.get("institution_label")
+            or key
+        ).strip()
+        url = portal.get("url", "")
+        if not url:
+            continue
+        score = (url.rstrip("/").count("/"), len(url))
+        current = best.get(key)
+        if current is None or score < current["score"]:
+            best[key] = {"name": name, "url": url, "score": score}
+    return [
+        {"name": value["name"], "url": value["url"]}
+        for value in sorted(best.values(), key=lambda item: item["name"])
+    ]
+
+
 def load_jsonl(path: str | list[str] = SEARCH_PATH) -> list[dict]:
     """Lee los resultados crudos del buscador (una página por línea)."""
     paths = [path] if isinstance(path, str) else list(path)

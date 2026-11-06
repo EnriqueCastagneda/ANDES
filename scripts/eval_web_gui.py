@@ -269,6 +269,22 @@ def main() -> int:
         check("tema alterna", browser.click_label("Cambiar tema"))
         time.sleep(1.0)
         browser.shot("01b-tema.png")
+
+        # Sitios de datos: un enlace por institución
+        check("abrir Acerca de", browser.click_semantics("Acerca de ANDES"))
+        time.sleep(1.2)
+        check("abrir Sitios", browser.click_semantics("Sitios"))
+        time.sleep(1.5)
+        sites_text = " ".join(browser.texts()).upper()
+        check(
+            "lista de sitios de datos",
+            "PORTALES DE DATOS" in sites_text and "BCRP" in sites_text,
+        )
+        browser.shot("01c-sitios.png")
+        browser.click_semantics("Cerrar")
+        time.sleep(0.8)
+        browser.click_semantics("Cerrar")
+        time.sleep(0.8)
         check("catálogo indexado", any(t.strip().endswith("series") for t in texts))
         browser.shot("01-inicio.png")
 
