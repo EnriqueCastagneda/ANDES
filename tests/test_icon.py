@@ -90,3 +90,15 @@ def test_manifest_uses_ande_branding():
     icons = {icon["src"] for icon in data["icons"]}
     assert "icons/icon-192.png" in icons
     assert "icons/icon-512.png" in icons
+
+
+def test_web_index_branding_and_cache_busting():
+    index = (ROOT / "assets" / "index.html").read_text(encoding="utf-8")
+    assert "<title>ANDES — Open Data Platform</title>" in index
+    assert "favicon.png?v=2" in index
+    assert 'name="theme-color" content="#1A1C33"' in index
+    assert "background: #f1eadc" in index
+    assert "background: #1b293d" in index
+    # Marcadores que Flet necesita para inyectar su configuración.
+    assert "<!-- fletAppConfig -->" in index
+    assert "<base href=" in index
