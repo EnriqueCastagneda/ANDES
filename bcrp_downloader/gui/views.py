@@ -37,6 +37,7 @@ from ..core.metadata import (
     series_info,
 )
 from ..core.paths import DATA_DIR, OUTPUT_DIR
+from ..core.sources import get_source
 from .theme import ThemeController
 
 
@@ -845,8 +846,12 @@ def main(page: ft.Page):
             return filters
         # Filtros propios de cada institución (MEF, INEI, ...).
         filters = {"institucion": institution}
-        controls = mef_controls if institution == "mef" else inei_controls
-        filters.update({key: widget.value for key, widget in controls.items()})
+        filters.update(
+            {
+                key: widget.value
+                for key, widget in institution_controls().get(institution, {}).items()
+            }
+        )
         return filters
 
     def search_current(query: str, limit: int | None = 300):
@@ -896,27 +901,39 @@ def main(page: ft.Page):
                 notify("Selecciona una serie de la lista", ft.Colors.AMBER)
             return None
 
-        start = start_input.value.strip()
-        end = end_input.value.strip()
+        info = series_info(code) or {}
+        inst_id = info.get("_institution_id", "")
+        institucion = info.get("Institución", "")
+        frequency = info.get("Frecuencia")
+        source = get_source(inst_id)
+        fixed = bool(source and source.fixed_period)
 
-        if not start or not end:
-            if not silent:
-                notify("Elige las fechas de inicio y fin", ft.Colors.AMBER)
-            return None
+        if fixed:
+            if inst_id == "inei":
+                start = info.get("Fecha de inicio") or "2018-01-01"
+                end = info.get("Fecha de fin") or "2026-12-31"
+            else:
+                start, end = "archivo", "unico"
+        else:
+            start = start_input.value.strip()
+            end = end_input.value.strip()
+            if not start or not end:
+                if not silent:
+                    notify("Elige las fechas de inicio y fin", ft.Colors.AMBER)
+                return None
 
         fmt = (format_dd.value or "CSV").lower()
+        if source and source.formats:
+            fmt = source.formats[0]
         if fmt not in EXPORT_FORMATS.values():
             if not silent:
                 notify(f"Formato no soportado: {fmt}", ft.Colors.AMBER)
             return None
 
         safe_code = re.sub(r"[^\w\-_.]", "_", code.upper())
-        info = series_info(code)
-        institucion = (info or {}).get("Institución", "")
-        frequency = (info or {}).get("Frecuencia")
 
         # XLS: BCRP entrega un .xls binario genuino sólo por su endpoint
-        if fmt == "xls" and institucion != "MEF":
+        if fmt == "xls" and inst_id == "bcrp":
             api_url = f"https://estadisticas.bcrp.gob.pe/estadisticas/series/api/{code}/xls/{start}/{end}/esp"
             try:
                 content = _http_get_bytes(api_url, max_retries=3, timeout=30)
@@ -931,10 +948,9 @@ def main(page: ft.Page):
                 notify(f"Guardado: {filepath}", ft.Colors.GREEN)
             return filepath
 
-        if institucion in ("MEF", "INEI"):
-            adapter = get_adapter(institucion.lower())
+        if inst_id and inst_id != "bcrp":
             try:
-                df_result = adapter.fetch([code], start, end)
+                df_result = get_adapter(inst_id).fetch([code], start, end)
             except Exception as ex:
                 if not silent:
                     notify(f"Error {institucion}: {ex}")
@@ -1011,7 +1027,12 @@ def main(page: ft.Page):
         if not codes:
             notify("Selecciona una serie de la lista", ft.Colors.AMBER)
             return
-        if not start_input.value.strip() or not end_input.value.strip():
+        institution = (institution_dd.value or "").strip()
+        source = get_source(institution)
+        fixed = bool(source and source.fixed_period)
+        if not fixed and (
+            not start_input.value.strip() or not end_input.value.strip()
+        ):
             notify("Elige las fechas de inicio y fin", ft.Colors.AMBER)
             return
 
@@ -1025,9 +1046,16 @@ def main(page: ft.Page):
         progress_text.value = f"Preparando {total} serie(s)…"
         refresh(download_btn, progress_box)
 
-        start = start_input.value.strip()
-        end = end_input.value.strip()
-        fmt = (format_dd.value or "CSV").lower()
+        if fixed:
+            start, end = "archivo", "unico"
+            if institution == "inei":
+                start, end = "2018-01-01", "2026-12-31"
+        else:
+            start = start_input.value.strip()
+            end = end_input.value.strip()
+        fmt = source.formats[0] if source and source.formats else (
+            format_dd.value or "CSV"
+        ).lower()
 
         def worker():
             saved = failed = done = 0
@@ -1043,38 +1071,32 @@ def main(page: ft.Page):
                     else:
                         failed += 1
             else:
-                institution = (institution_dd.value or "").strip()
                 groups: dict[str, list[str]] = {}
-                if institution.upper() == "MEF":
-                    groups["MEF"] = list(codes)
-                elif institution.upper() == "INEI":
-                    groups["INEI"] = list(codes)
-                else:
-                    for code in codes:
-                        info = series_info(code)
-                        groups.setdefault(
-                            (info or {}).get("Frecuencia") or "", []
-                        ).append(code)
+                for code in codes:
+                    info = series_info(code) or {}
+                    inst = info.get("_institution_id") or ""
+                    if inst and inst != "bcrp":
+                        key = inst
+                    else:
+                        key = info.get("Frecuencia") or ""
+                    groups.setdefault(key, []).append(code)
 
-                for gindex, (frequency, group) in enumerate(groups.items(), start=1):
+                for gindex, (key, group) in enumerate(groups.items(), start=1):
                     progress_text.value = (
                         f"Lote {gindex} de {len(groups)}: {len(group)} serie(s)…"
                     )
                     refresh(progress_text)
                     frame = None
-                    if frequency == "MEF":
+                    if key == "inei_tematico":
+                        frame = None  # un archivo por descarga
+                    elif key and key != "bcrp":
                         try:
-                            frame = get_adapter("mef").fetch(group, start, end)
+                            frame = get_adapter(key).fetch(group, start, end)
                         except Exception:
                             frame = None
-                    elif frequency == "INEI":
+                    elif key:
                         try:
-                            frame = get_adapter("inei").fetch(group, start, end)
-                        except Exception:
-                            frame = None
-                    elif frequency:
-                        try:
-                            frame = download_many(group, start, end, frequency)
+                            frame = download_many(group, start, end, key)
                         except Exception:
                             frame = None
 
@@ -1211,12 +1233,28 @@ def main(page: ft.Page):
         for dimension in INEI_DIMENSIONS
     }
 
+    # Filtros propios del índice temático del INEI.
+    INEI_TEMATICO_DIMENSIONS = portals.spec_for("inei_tematico").dimensions
+    inei_tematico_controls = {
+        dimension.key: make_adv_dd(dimension.label, dimension.key)
+        for dimension in INEI_TEMATICO_DIMENSIONS
+    }
+
+    def institution_controls() -> dict[str, dict]:
+        return {
+            "mef": mef_controls,
+            "inei": inei_controls,
+            "inei_tematico": inei_tematico_controls,
+        }
+
     def clear_filters(e):
         for dd in (adv_area, adv_fuente, adv_categoria, adv_grupo):
             dd.value = ""
         for dd in mef_controls.values():
             dd.value = ""
         for dd in inei_controls.values():
+            dd.value = ""
+        for dd in inei_tematico_controls.values():
             dd.value = ""
         for dc in (filtro_creacion_desde, filtro_creacion_hasta, filtro_actual_desde, filtro_actual_hasta):
             dc.controls[0].value = ""
@@ -1316,7 +1354,7 @@ def main(page: ft.Page):
                 if (control.controls[0].value or "").strip():
                     return True
             return False
-        controls = mef_controls if institution == "mef" else inei_controls
+        controls = institution_controls().get(institution, {})
         return any((dd.value or "").strip() for dd in controls.values())
 
     def update_master_state():
@@ -1720,6 +1758,27 @@ def main(page: ft.Page):
         visible=False,
     )
 
+    inei_tematico_grid = ft.ResponsiveRow(
+        list(inei_tematico_controls.values()),
+        spacing=10,
+        run_spacing=10,
+    )
+    for ctrl in inei_tematico_grid.controls:
+        ctrl.col = {"xs": 12, "sm": 6}
+
+    inei_tematico_section = ft.Column(
+        [
+            ft.Text("Filtros de INEI (índice temático)", size=11, color=MUTED),
+            inei_tematico_grid,
+            ft.Row(
+                [ft.TextButton("Limpiar", on_click=clear_filters, style=ft.ButtonStyle(color=MUTED))],
+                spacing=4,
+            ),
+        ],
+        spacing=10,
+        visible=False,
+    )
+
     bcrp_section = ft.Column(
         [frequency_box, advanced_panel],
         spacing=10,
@@ -1728,7 +1787,9 @@ def main(page: ft.Page):
 
     filters_ui = {"open": False}
     filters_host = ft.Column(
-        [bcrp_section, mef_section, inei_section], spacing=10, visible=False
+        [bcrp_section, mef_section, inei_section, inei_tematico_section],
+        spacing=10,
+        visible=False,
     )
     filters_toggle = ft.IconButton(
         icon=ft.Icons.TUNE,
@@ -1761,21 +1822,58 @@ def main(page: ft.Page):
 
     filters_toggle.on_click = toggle_filters
 
+    def set_date_enabled(enabled: bool):
+        """Bloquea o habilita por completo los campos de fecha."""
+        for control in (start_control, end_control):
+            for child in control.controls:
+                child.disabled = not enabled
+
+    def set_format_locked(source_id: str):
+        """Fija el formato adecuado y desactiva el selector si es único."""
+        source = get_source(source_id)
+        allowed = source.formats if source else ()
+        if allowed:
+            format_dd.value = allowed[0].upper()
+            format_dd.disabled = True
+        else:
+            format_dd.disabled = False
+
+    def reload_dimension_options(source_id: str):
+        """Repuebla los filtros de una institución tras indexar en vivo."""
+        dimensions = {
+            "mef": MEF_DIMENSIONS,
+            "inei": INEI_DIMENSIONS,
+            "inei_tematico": INEI_TEMATICO_DIMENSIONS,
+        }.get(source_id, ())
+        controls = institution_controls().get(source_id, {})
+        for dimension in dimensions:
+            dropdown = controls.get(dimension.key)
+            if dropdown is None:
+                continue
+            field = portals.catalog_field(dimension.key)
+            dropdown.options = [ft.dropdown.Option(key="", text="Todos")] + [
+                ft.dropdown.Option(key=value, text=value)
+                for value in institution_filter_options(source_id, field)
+            ]
+            refresh(dropdown)
+
     def on_institution_change(e):
         institution = institution_dd.value or ""
+        source = get_source(institution)
+        fixed = bool(source and source.fixed_period)
         bcrp_section.visible = institution == "bcrp"
         mef_section.visible = institution == "mef"
         inei_section.visible = institution == "inei"
+        inei_tematico_section.visible = institution == "inei_tematico"
         if institution != "bcrp":
             set_frequency("Todos", repaint=False)
         filters_ui["open"] = False
         update_filter_toggle()
         for dropdown in (adv_area, adv_fuente, adv_categoria, adv_grupo):
             dropdown.value = ""
-        for dropdown in mef_controls.values():
-            dropdown.value = ""
-        for dropdown in inei_controls.values():
-            dropdown.value = ""
+        for controls in institution_controls().values():
+            for dropdown in controls.values():
+                dropdown.value = ""
         for control in (
             filtro_creacion_desde,
             filtro_creacion_hasta,
@@ -1789,24 +1887,30 @@ def main(page: ft.Page):
         update_master_state()
         start_input.value = ""
         end_input.value = ""
-        if institution.upper() == "MEF":
+        set_date_enabled(not fixed)
+        set_format_locked(institution)
+        if institution == "mef":
             start_input.tooltip = "Periodo MEF: 2026-01"
             end_input.tooltip = "Periodo MEF: 2026-12"
             params_hint.value = "Periodos MEF: año-mes (2026-01)"
-        elif institution.upper() == "BCRP":
+        elif institution == "bcrp":
             start_input.tooltip = "Periodo BCRP: 2024-1 o 2024-01-15"
             end_input.tooltip = "Periodo BCRP: 2024-12"
             params_hint.value = "Periodos BCRP: 2024-1 · 2024-01-15"
-        elif institution.upper() == "INEI":
-            start_input.tooltip = "Periodo INEI: 2018"
-            end_input.tooltip = "Periodo INEI: 2026"
-            params_hint.value = "Periodos INEI: año (2018-2026)"
+        elif institution == "inei":
+            params_hint.value = "INEI: archivo único 2018-2026 (sin filtro de fechas)"
+        elif institution == "inei_tematico":
+            params_hint.value = "INEI Temático: archivo único (sin filtro de fechas)"
         else:
             start_input.tooltip = "Elige una institución"
             end_input.tooltip = "Elige una institución"
             params_hint.value = "Elige una institución para habilitar la descarga"
-        refresh(start_input, end_input, params_hint)
+        refresh(
+            start_input, end_input, params_hint, format_dd,
+            start_control, end_control,
+        )
         apply_filters(None)
+        reload_dimension_options(institution)
         page.update()
 
     institution_dd.on_select = on_institution_change
@@ -1982,6 +2086,13 @@ def main(page: ft.Page):
                     ft.dropdown.Option(key=value, text=value)
                     for value in institution_filter_options("inei", field)
                 ]
+            for dimension in INEI_TEMATICO_DIMENSIONS:
+                dropdown = inei_tematico_controls[dimension.key]
+                field = portals.catalog_field(dimension.key)
+                dropdown.options = [ft.dropdown.Option(key="", text="Todos")] + [
+                    ft.dropdown.Option(key=value, text=value)
+                    for value in institution_filter_options("inei_tematico", field)
+                ]
             df_metadata = search_catalog("", limit=300)
         except Exception as ex:
             notify(f"Catálogo rápido no disponible: {ex}", ft.Colors.AMBER)
@@ -2009,6 +2120,8 @@ def main(page: ft.Page):
             for dropdown in mef_controls.values():
                 dropdown.options = [ft.dropdown.Option(key="", text="Todos")]
             for dropdown in inei_controls.values():
+                dropdown.options = [ft.dropdown.Option(key="", text="Todos")]
+            for dropdown in inei_tematico_controls.values():
                 dropdown.options = [ft.dropdown.Option(key="", text="Todos")]
 
         metadata_state["ready"] = True

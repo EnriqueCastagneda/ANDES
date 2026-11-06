@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from .bcrp import BcrpAdapter
 from .inei import IneiAdapter
+from .inei_tematico import IneiTematicoAdapter
 from .mef import MefAdapter
 
 _ADAPTERS = {
     "bcrp": BcrpAdapter(),
     "mef": MefAdapter(),
     "inei": IneiAdapter(),
+    "inei_tematico": IneiTematicoAdapter(),
 }
 
 

@@ -389,3 +389,18 @@ def count_prefix(prefix: str, institution: str | None = None,
         return int(conn.execute(sql, params).fetchone()[0])
     finally:
         conn.close()
+
+
+def clear_institution(institution: str, db_path: str | None = None) -> int:
+    """Borra las series de una institución y reconstruye el índice FTS5."""
+    db_path = db_path or ensure_catalog()
+    conn = sqlite3.connect(db_path)
+    try:
+        cursor = conn.execute(
+            "DELETE FROM series WHERE institution = ?", (institution,)
+        )
+        conn.execute("INSERT INTO series_fts(series_fts) VALUES('rebuild')")
+        conn.commit()
+        return int(cursor.rowcount)
+    finally:
+        conn.close()

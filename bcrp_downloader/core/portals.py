@@ -66,6 +66,9 @@ _DIMENSIONS: dict[str, tuple[Dimension, ...]] = {
     "inei": (
         _dim("area", "Departamento"),
     ),
+    "inei_tematico": (
+        _dim("categoria", "Categoría temática"),
+    ),
 }
 
 _ENDPOINTS: dict[str, dict[str, str]] = {
@@ -76,10 +79,19 @@ _ENDPOINTS: dict[str, dict[str, str]] = {
     "mef": {
         "portal": "https://apps5.mineco.gob.pe/transparencia/Navegador/default.aspx",
     },
+    "inei": {"portal": "https://www.gob.pe/institucion/inei"},
+    "inei_tematico": {
+        "indice": "https://www.inei.gob.pe/estadisticas-indice-tematico/",
+    },
 }
 
-_PERIODS = {"bcrp": "2026-11, 2026-4, 2026, 2026-11-5", "mef": "2026"}
-_PENDING = {"bcrp": (), "mef": ()}
+_PERIODS = {
+    "bcrp": "2026-11, 2026-4, 2026, 2026-11-5",
+    "mef": "2026",
+    "inei": "2018-2026",
+    "inei_tematico": "archivo único",
+}
+_PENDING = {"bcrp": (), "mef": (), "inei": (), "inei_tematico": ()}
 
 # Clave de filtro de la GUI -> columna/campo del catálogo.
 _SEED_KEYS = {

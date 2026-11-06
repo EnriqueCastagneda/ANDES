@@ -84,7 +84,10 @@ def export_series(df, code, start, end, fmt, out_dir=None):
         raise ValueError(f"Formato no soportado: {fmt}")
 
     safe_code = re.sub(r"[^\w\-_.]", "_", code.upper())
-    filename = f"bcrp_serie_{safe_code}_{start}_to_{end}.{fmt}"
+    if start in ("archivo", "snapshot"):
+        filename = f"bcrp_serie_{safe_code}.{fmt}"
+    else:
+        filename = f"bcrp_serie_{safe_code}_{start}_to_{end}.{fmt}"
     filepath = os.path.join(out_dir, filename)
 
     if fmt == "csv":

@@ -21,6 +21,10 @@ class Source:
     enabled: bool = True
     # Valores iniciales de los filtros propios (se completan con el catálogo).
     filter_options: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    # Archivo único: no hay rango de fechas ni periodos que elegir.
+    fixed_period: bool = False
+    # Formatos de salida permitidos; vacío = todos. Si queda uno, la GUI lo fija.
+    formats: tuple[str, ...] = ()
 
 
 SOURCES: tuple[Source, ...] = (
@@ -70,8 +74,8 @@ SOURCES: tuple[Source, ...] = (
     ),
     Source(
         id="inei",
-        name="Instituto Nacional de Estadística e Informática",
-        short_name="INEI",
+        name="Instituto Nacional de Estadística e Informática - Población proyectada",
+        short_name="INEI Población Proyectada",
         base_url="https://www.gob.pe/institucion/inei",
         metadata_url=(
             "https://www.gob.pe/institucion/inei/"
@@ -81,6 +85,17 @@ SOURCES: tuple[Source, ...] = (
         filter_options={
             "start": tuple(str(year) for year in range(2018, 2027)),
         },
+        fixed_period=True,
+        formats=("xls",),
+    ),
+    Source(
+        id="inei_tematico",
+        name="Instituto Nacional de Estadística e Informática - Índice temático",
+        short_name="INEI Temático",
+        base_url="https://www.inei.gob.pe/estadisticas-indice-tematico/",
+        metadata_url="https://www.inei.gob.pe/estadisticas-indice-tematico/",
+        fixed_period=True,
+        formats=("csv",),
     ),
 )
 

@@ -106,7 +106,7 @@ requieren controles propios.
   filtrado de cada recurso, con caché local por año. Las series guardan
   inicio/fin mensuales reales (p. ej. `2026-01` a `2026-10`).
 
-## INEI — población distrital
+## INEI Población Proyectada — población distrital
 
 - Fuente: `Perú: Población Total Proyectada al 30 de Junio de cada año, según
   Departamento, Provincia y Distrito, 2018–2026` (INEI, XLSX).
@@ -115,4 +115,17 @@ requieren controles propios.
   búsqueda desde el catálogo local.
 - Frecuencia anual; los periodos son `YYYY-01-01` y `fetch` respeta el rango
   solicitado (años o fechas completas).
-- Exportación en los seis formatos (CSV, JSON, XLS, XML, TXT, HTML).
+- Archivo único: la GUI bloquea las fechas y fija la salida en XLS.
+
+## INEI Temático — índice temático
+
+- Fuente: `https://www.inei.gob.pe/estadisticas-indice-tematico/`.
+- El adaptador descubre en vivo las categorías del índice (Economía, Población
+  y Vivienda, Empleo, Sociales, Medio Ambiente, TIC, Seguridad Ciudadana e
+  Indicadores de Género) y los archivos `.xls/.xlsx/.xlsm/.csv` enlazados en
+  cada una. No hay lista fija: si el INEI agrega o quita archivos, el índice se
+  reconstruye (caché de 7 días) y el catálogo se reemplaza.
+- Cada archivo es un registro `INEI-TEM-<hash>` con categoría y sección; la
+  búsqueda es local. Al descargar se lee la tabla (detección de encabezado) y se
+  exporta a CSV.
+- Archivo único: la GUI bloquea las fechas y fija la salida en CSV.
