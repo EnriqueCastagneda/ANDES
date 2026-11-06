@@ -1,21 +1,46 @@
-# BCRP Downloader
+# ANDES — Open Data Platform
 
-Aplicación modular en Python para explorar el catálogo de series estadísticas del
-**Banco Central de Reserva del Perú (BCRP)** y descargar sus series temporales.
-Incluye interfaz de escritorio (Flet), CLI (Typer) y servidor **MCP** para agentes
+**Archivo Nacional de Datos Estadísticos y Sociales**  
+**Andean Network for Data, Evidence and Statistics**
+
+ANDES es una plataforma de acceso, integración, exploración y consulta de
+estadísticas y datos abiertos. Reduce las barreras de acceso a la información
+pública y favorece su uso en investigación, análisis, planificación, docencia y
+toma de decisiones.
+
+Integra el catálogo del **Banco Central de Reserva del Perú (BCRP)**, el Portal
+de Transparencia del **MEF**, la población proyectada y el índice temático del
+**INEI**, y portales estadísticos de entidades públicas del Perú. Incluye
+interfaz de escritorio y web (Flet), CLI (Typer) y servidor **MCP** para agentes
 de IA.
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Flet](https://img.shields.io/badge/Flet-1.0.5-7c4dff)
 ![License](https://img.shields.io/badge/License-GPLv3-blue)
+![Brand](https://img.shields.io/badge/ANDES-Open%20Data%20Platform-d8b56d)
+
+## Identidad
+
+- **Nombre**: ANDES.
+- **Descriptor**: Open Data Platform.
+- **ES**: Archivo Nacional de Datos Estadísticos y Sociales.
+- **EN**: Andean Network for Data, Evidence and Statistics.
+- **Isotipo**: colibrí de Nasca con flecha de descarga, inspirado en los
+  geoglifos y la geometría andina.
+- **Temas**: oscuro `#1b293d` / `#d8b56d`; claro `#f1eadc` / `#2a3f48`.
+- **Marca**: el uso de la identidad se rige por [`TRADEMARKS.md`](TRADEMARKS.md).
+
+Los datos pertenecen a sus instituciones productoras. ANDES reconoce la fuente,
+la metodología, la cobertura y las condiciones de reutilización de cada serie.
 
 ## Características
 
 - **Núcleo desacoplado**: `bcrp_downloader.core` maneja metadatos, HTTP y exportación
   sin depender de Flet.
-- **GUI** oscura tipo SaaS con búsqueda, filtro por frecuencia, filtros avanzados
-  colapsables, selección múltiple, navegación por teclado y tema automático según
-  la hora local (claro 06:00–17:59, oscuro 18:00–05:59) con interruptor manual.
+- **GUI** con identidad ANDES, temas claro y oscuro exactos, búsqueda, filtro
+  por institución, filtros colapsables, selección múltiple, navegación por
+  teclado y tema automático según la hora local con interruptor manual
+  persistente.
 - **CLI** con `bcrp search`, `bcrp download`, `bcrp download-many`, `bcrp gui` y
   `bcrp mcp`.
 - **Catálogo local SQLite + FTS5**: búsquedas en milisegundos sin cargar el CSV
@@ -243,6 +268,13 @@ git push origin v1.1.3
 - Series: `https://estadisticas.bcrp.gob.pe/estadisticas/series/api/{codigo}/{formato}/{inicio}/{fin}/esp`
 
 La información pertenece al Banco Central de Reserva del Perú.
+
+## Identidad y marca
+
+La identidad visual vive en `bcrp_downloader/core/branding.py` y los recursos en
+`assets/`. El tema se aplica desde `bcrp_downloader/gui/theme.py` con los
+colores institucionales. El código se distribuye bajo GPLv3; la marca se rige
+por `TRADEMARKS.md`.
 
 ## Licencia
 

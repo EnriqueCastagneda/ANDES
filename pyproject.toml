@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bcrp-downloader"
-version = "1.1.3"
-description = "Explorador y extractor de series estadísticas del Banco Central de Reserva del Perú (BCRP)."
+version = "2.0.0"
+description = "ANDES — Open Data Platform: acceso, integración y descarga de estadísticas y datos abiertos del Perú."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "GPL-3.0-or-later" }
 authors = [{ name = "BCRP Downloader contributors" }]
-keywords = ["bcrp", "flet", "pandas", "series-temporales", "peru", "mcp"]
+keywords = ["andes", "open-data", "estadisticas", "peru", "flet", "pandas", "mcp"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
@@ -50,6 +50,7 @@ dev = [
 
 [project.scripts]
 bcrp = "bcrp_downloader.cli.main:app"
+andes = "bcrp_downloader.cli.main:app"
 
 [tool.setuptools]
 py-modules = ["app"]

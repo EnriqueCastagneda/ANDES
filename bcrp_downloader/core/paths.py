@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+ASSETS_DIR = str(PROJECT_ROOT / "assets")
 
 METADATA_URL = "https://estadisticas.bcrp.gob.pe/estadisticas/series/metadata"
 DATA_DIR = os.environ.get("BCRP_DATA_DIR", "data")
