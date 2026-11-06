@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from bcrp_downloader.core.gobpe import classify  # noqa: E402
 
 BASE = "https://www.gob.pe/busquedas.json"
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; bcrp-downloader/1.0)"}
+HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ANDES/2.0)"}
 
 
 def fetch_sheet(term: str, sheet: int, contenido: str = "",

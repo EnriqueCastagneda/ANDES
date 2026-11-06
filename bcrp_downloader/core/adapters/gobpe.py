@@ -20,7 +20,7 @@ from ..paths import DATA_DIR
 
 CACHE_DIR = os.path.join(DATA_DIR, "gobpe", "files")
 INDEX_STAMP = os.path.join(DATA_DIR, "gobpe", "indexed.json")
-HEADERS = {"User-Agent": "Mozilla/5.0 (bcrp-downloader)"}
+HEADERS = {"User-Agent": "Mozilla/5.0 (ANDES/2.0)"}
 _FILE_TTL = 7 * 86400
 
 

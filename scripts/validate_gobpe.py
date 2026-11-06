@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; bcrp-downloader/1.0)"}
+HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ANDES/2.0)"}
 
 
 def probe(url: str, timeout: int = 20) -> dict:

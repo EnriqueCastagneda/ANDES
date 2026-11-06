@@ -18,13 +18,13 @@ def _build_server():
     try:  # mcp 1.x
         from mcp.server.fastmcp import FastMCP
 
-        return FastMCP("bcrp-downloader")
+        return FastMCP("andes")
     except Exception:
         pass
     try:  # mcp 2.x renamed FastMCP to MCPServer
         from mcp.server.mcpserver import MCPServer
 
-        return MCPServer("bcrp-downloader")
+        return MCPServer("andes")
     except Exception:
         return None
 

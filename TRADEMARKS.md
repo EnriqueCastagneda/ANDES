@@ -25,7 +25,7 @@ deberá sustentarse en la documentación correspondiente.
 Mientras no se designe un titular confirmado, la administración de la
 identidad corresponde a los mantenedores del repositorio oficial:
 
-<https://github.com/EnriqueCastagneda/BCRP-Downloader>
+<https://github.com/EnriqueCastagneda/ANDES>
 
 ## 2. Relación con la licencia GPLv3
 

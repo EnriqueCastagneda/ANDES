@@ -1,6 +1,6 @@
 # BCRPData: análisis del portal e integración acelerada
 
-Fecha: 2026-11-05 · App analizada: [BCRP-Downloader](https://github.com/EnriqueCastagneda/BCRP-Downloader) (Python 3.10+, Flet 1.0.5, pandas, requests, Typer, MCP)
+Fecha: 2026-11-05 · App analizada: [ANDES](https://github.com/EnriqueCastagneda/ANDES) (Python 3.10+, Flet 1.0.5, pandas, requests, Typer, MCP)
 
 ## 1. Resumen
 

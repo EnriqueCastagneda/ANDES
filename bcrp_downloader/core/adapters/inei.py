@@ -27,7 +27,7 @@ URL = (
 )
 CACHE_DIR = os.path.join(DATA_DIR, "inei")
 YEARS = list(range(2018, 2027))
-HEADERS = {"User-Agent": "Mozilla/5.0 (bcrp-downloader)"}
+HEADERS = {"User-Agent": "Mozilla/5.0 (ANDES/2.0)"}
 _YEAR_COLUMN = re.compile(r"^20(1[89]|2[0-6])$")
 
 

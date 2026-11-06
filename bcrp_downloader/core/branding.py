@@ -18,7 +18,7 @@ APP_DESCRIPTION = (
     "estadísticas y datos abiertos."
 )
 APP_VERSION = "2.0.0"
-REPOSITORY_URL = "https://github.com/EnriqueCastagneda/BCRP-Downloader"
+REPOSITORY_URL = "https://github.com/EnriqueCastagneda/ANDES"
 LICENSE_NAME = "GNU General Public License v3.0 or later"
 
 # Colores obligatorios.
