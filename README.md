@@ -115,17 +115,17 @@ Una expresión inválida se reintenta como búsqueda simple por prefijos.
 ## Ejecutables compilados
 
 <!-- DOWNLOADS:START -->
-Descarga los archivos de la versión [v1.1.0](https://github.com/EnriqueCastagneda/BCRP-Downloader/releases/tag/v1.1.0):
+Descarga los archivos de la versión [v1.1.0](https://github.com/EnriqueCastagneda/ANDES/releases/tag/v1.1.0):
 
 | Plataforma | Descarga |
 | --- | --- |
-| Linux | [bcrp-downloader-linux-1.1.0.tar.gz](https://github.com/EnriqueCastagneda/BCRP-Downloader/releases/download/v1.1.0/bcrp-downloader-linux-1.1.0.tar.gz) |
-| Windows | [bcrp-downloader-windows-1.1.0.zip](https://github.com/EnriqueCastagneda/BCRP-Downloader/releases/download/v1.1.0/bcrp-downloader-windows-1.1.0.zip) |
-| macOS | [bcrp-downloader-macos-1.1.0.zip](https://github.com/EnriqueCastagneda/BCRP-Downloader/releases/download/v1.1.0/bcrp-downloader-macos-1.1.0.zip) |
-| Android (APK) | [bcrp-downloader-apk-1.1.0.zip](https://github.com/EnriqueCastagneda/BCRP-Downloader/releases/download/v1.1.0/bcrp-downloader-apk-1.1.0.zip) |
-| Web | [bcrp-downloader-web-1.1.0.zip](https://github.com/EnriqueCastagneda/BCRP-Downloader/releases/download/v1.1.0/bcrp-downloader-web-1.1.0.zip) |
+| Linux | [bcrp-downloader-linux-1.1.0.tar.gz](https://github.com/EnriqueCastagneda/ANDES/releases/download/v1.1.0/bcrp-downloader-linux-1.1.0.tar.gz) |
+| Windows | [bcrp-downloader-windows-1.1.0.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v1.1.0/bcrp-downloader-windows-1.1.0.zip) |
+| macOS | [bcrp-downloader-macos-1.1.0.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v1.1.0/bcrp-downloader-macos-1.1.0.zip) |
+| Android (APK) | [bcrp-downloader-apk-1.1.0.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v1.1.0/bcrp-downloader-apk-1.1.0.zip) |
+| Web | [bcrp-downloader-web-1.1.0.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v1.1.0/bcrp-downloader-web-1.1.0.zip) |
 
-Consulta la página de [releases](https://github.com/EnriqueCastagneda/BCRP-Downloader/releases) para descargar otras versiones.
+Consulta la página de [releases](https://github.com/EnriqueCastagneda/ANDES/releases) para descargar otras versiones.
 <!-- DOWNLOADS:END -->
 
 > Esta sección se actualiza automáticamente en cada release (`build_release.yml`).
@@ -141,8 +141,8 @@ pipx install bcrp-downloader
 Para desarrollo:
 
 ```bash
-git clone https://github.com/EnriqueCastagneda/BCRP-Downloader.git
-cd BCRP-Downloader
+git clone https://github.com/EnriqueCastagneda/ANDES.git
+cd ANDES
 python -m venv .venv
 source .venv/bin/activate           # Windows: .venv\Scripts\activate
 pip install -e ".[mcp,dev]"
@@ -283,7 +283,7 @@ Las pruebas de red usan mocks; no dependen de la disponibilidad del BCRP.
 Publicar una versión:
 
 ```bash
-git tag -a v1.1.3 -m "BCRP Downloader v1.1.3"
+git tag -a v2.0.0 -m "ANDES v2.0.0"
 git push origin v1.1.3
 ```
 

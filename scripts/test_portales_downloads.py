@@ -20,7 +20,7 @@ import requests
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 TMP = "/tmp/opencode/portal-tests"
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; bcrp-downloader/1.0)"}
+HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ANDES/2.0)"}
 
 
 def probe(url: str) -> dict:
