@@ -487,6 +487,7 @@ def main() -> int:
             "detalles MEF con etiquetas propias",
             "RUBRO" in texts and "NIVEL DE GOBIERNO" in texts,
         )
+        check("origen en detalles", "ORIGEN:" in texts)
         check("fecha MEF inicio", browser.type_into("Fecha inicio", "2010-01-01"))
         check("fecha MEF fin", browser.type_into("Fecha fin", "2026-10-01"))
         check("descargar MEF", browser.click_semantics("Descargar"))

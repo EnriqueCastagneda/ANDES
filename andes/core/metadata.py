@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 
 import pandas as pd
@@ -203,6 +204,38 @@ def series_info(code: str) -> dict | None:
     info["Institución"] = sources.labels().get(row.get("institution", ""), row.get("institution", ""))
     info["_institution_id"] = row.get("institution", "")
     return info
+
+
+def origin_for(code: str, db_path: str | None = None) -> tuple[str, str]:
+    """Devuelve ``(url, etiqueta)`` del recurso que originó la serie."""
+    row = catalog.get(code, db_path=db_path) or {}
+    institution = row.get("institution", "")
+    try:
+        memo = json.loads(row.get("memo") or "{}")
+    except (TypeError, ValueError):
+        memo = {}
+    url = memo.get("url", "")
+    if institution == "bcrp":
+        return (
+            url
+            or (
+                "https://estadisticas.bcrp.gob.pe/estadisticas/series/api/"
+                f"{code}/json/2020-1/2025-12/esp"
+            ),
+            "API BCRP",
+        )
+    if institution == "mef":
+        return url or "https://datosabiertos.mef.gob.pe", "API MEF"
+    if institution == "inei":
+        return url or "https://www.inei.gob.pe", "INEI"
+    if institution == "inei_tematico":
+        return (
+            url or "https://www.inei.gob.pe/estadisticas-indice-tematico/",
+            "INEI Temático",
+        )
+    if institution.startswith("gobpe:"):
+        return url or "https://www.gob.pe", "Portal Gob.pe"
+    return url or "https://www.gob.pe", row.get("source") or "Gob.pe"
 
 
 def frequency_for(codes: list[str]) -> str:

@@ -77,6 +77,8 @@ la metodología, la cobertura y las condiciones de reutilización de cada serie.
 - **Servidor MCP** (stdio) con herramientas `search_series`, `get_metadata` y
   `download_series`.
 - **Exportación** a CSV, JSON, XLS, XML, TXT y HTML (XLS binario real).
+- **Origen en detalles**: enlace al recurso y etiqueta de API (BCRP, MEF,
+  INEI, portal) con tooltip.
 - **Estadísticas MEF**: 61 cuadros `.xls` convertidos a series anuales y
   trimestrales, además de las transferencias mensuales.
 - **INEI Población Proyectada**: 1 892 distritos con proyección 2018–2026,
