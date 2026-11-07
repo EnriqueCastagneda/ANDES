@@ -128,11 +128,12 @@ jobs:
         run: |
           set -euo pipefail
           TARBALL="${{ steps.build.outputs.archive-path }}"
-          if ! tar -tzf "$TARBALL" | grep -q "^linux/andes$"; then
+          # grep sin -q: consume toda la salida y evita SIGPIPE con pipefail.
+          if ! tar -tzf "$TARBALL" | grep "^linux/andes$" > /dev/null; then
             echo "ERROR: Missing linux/andes launcher in tarball"
             exit 1
           fi
-          if ! tar -tzf "$TARBALL" | grep -q "linux/app/andes/"; then
+          if ! tar -tzf "$TARBALL" | grep "linux/app/andes/" > /dev/null; then
             echo "ERROR: Missing linux/app/andes/ python package in tarball"
             exit 1
           fi
@@ -143,7 +144,7 @@ jobs:
         run: |
           set -euo pipefail
           ZIP="${{ steps.build.outputs.archive-path }}"
-          if ! unzip -l "$ZIP" | grep -q "andes.exe"; then
+          if ! unzip -l "$ZIP" | grep "andes.exe" > /dev/null; then
             echo "ERROR: Missing andes.exe in windows archive"
             exit 1
           fi
@@ -158,7 +159,7 @@ jobs:
             echo "ERROR: APK not found at $APK"
             exit 1
           fi
-          if ! unzip -l "$APK" | grep -qE '\.apk$'; then
+          if ! unzip -l "$APK" | grep -E '\.apk$' > /dev/null; then
             echo "ERROR: No .apk file inside $APK"
             exit 1
           fi
