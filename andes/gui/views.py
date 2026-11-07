@@ -40,7 +40,7 @@ from ..core.metadata import (
     search_catalog,
     series_info,
 )
-from ..core.paths import ASSETS_DIR, DATA_DIR
+from ..core.paths import ASSETS_DIR, DATA_DIR, _home
 from ..core.sources import get_source
 from .theme import ThemeController
 
@@ -2027,7 +2027,7 @@ def main(page: ft.Page):
     menu_state = {"open": False}
 
     def output_candidates() -> list[str]:
-        home = Path.home()
+        home = _home()
         values = [
             preferences.load_output_dir(),
             preferences.default_output_dir(),
@@ -2174,6 +2174,13 @@ def main(page: ft.Page):
             page.run_task(reload_page)
             return
         try:
+            if os.name == "nt":
+                # Windows: os.execv bloquea el proceso original (CRT _P_WAIT)
+                # y deja la app congelada. Se relanza y se termina el actual.
+                import subprocess
+
+                subprocess.Popen([sys.executable, *sys.argv])
+                os._exit(0)
             os.execv(sys.executable, [sys.executable, *sys.argv])
         except Exception as exc:
             notify(f"No se pudo reiniciar: {exc}")
