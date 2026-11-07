@@ -140,11 +140,11 @@ def test_load_output_dir_normalizes_nfd(tmp_path, monkeypatch):
     assert unicodedata.is_normalized("NFC", preferences.load_output_dir())
 
 
+@pytest.mark.skipif(os.name == "nt", reason="macOS no aplica en Windows")
 def test_macos_data_path(prefs, tmp_path, monkeypatch):
     """macOS: datos y configuración en ~/Library/Application Support/andes."""
     from andes.core import paths
 
-    monkeypatch.setattr(paths.os, "name", "posix")
     monkeypatch.setattr(paths.sys, "platform", "darwin")
     expected = Path.home() / "Library" / "Application Support" / "andes"
     assert paths._user_data_dir() == expected
