@@ -15,7 +15,7 @@ import flet as ft
 import pandas as pd
 
 from .. import APP_NAME, APP_TAGLINE, APP_VERSION
-from ..core import branding, gobpe, portals, preferences
+from ..core import branding, catalog, gobpe, portals, preferences
 from ..core.adapters import get_adapter
 from ..core.api import (
     EXPORT_FORMATS,
@@ -2038,6 +2038,7 @@ def main(page: ft.Page):
         ]
         return list(dict.fromkeys(value for value in values if value))
 
+    output_state = {"rebuilding": False}
     output_dd = ft.Dropdown(
         label="Carpeta de guardado",
         value=preferences.load_output_dir(),
@@ -2051,44 +2052,56 @@ def main(page: ft.Page):
             border_radius=10, side=ft.BorderSide(1, BORDER)
         ),
     )
+
     def rebuild_output_options():
         current = preferences.load_output_dir()
-        output_dd.options = [
-            ft.dropdown.Option(key="", text="Predeterminada (al descargar)")
-        ] + [ft.dropdown.Option(key=path, text=path) for path in output_candidates()]
-        output_dd.value = current
+        output_state["rebuilding"] = True
+        try:
+            output_dd.options = [
+                ft.dropdown.Option(key="", text="Predeterminada (al descargar)")
+            ] + [
+                ft.dropdown.Option(key=path, text=path)
+                for path in output_candidates()
+            ]
+            output_dd.value = current
+        finally:
+            output_state["rebuilding"] = False
         refresh(output_dd)
 
-    def apply_output_dir(path: str, notify_user: bool = True):
-        target = os.path.expanduser((path or "").strip())
-        if not target:
+    def apply_output_dir(path: str, notify_user: bool = True) -> bool:
+        if not (path or "").strip():
+            preferences.clear_output_dir()
             rebuild_output_options()
-            return
+            return True
         try:
-            os.makedirs(target, exist_ok=True)
-        except OSError as exc:
-            notify(f"No se pudo crear la carpeta: {exc}")
-            return
-        preferences.save_output_dir(target)
+            target = preferences.save_output_dir(path)
+        except preferences.OutputDirError as exc:
+            notify(f"Carpeta de guardado no válida: {exc}")
+            return False
         rebuild_output_options()
         if notify_user:
             notify(f"Carpeta de guardado: {target}", ft.Colors.GREEN)
+        return True
+
+    def on_output_change(e):
+        if not output_state["rebuilding"]:
+            apply_output_dir(e.control.value)
 
     def open_output_dialog(e=None):
         close_menu()
         field = ft.TextField(
             label="Ruta de guardado",
             value=preferences.load_output_dir(),
-            hint_text="/home/usuario/Documentos/ANDES",
+            hint_text=preferences.default_output_dir(),
             text_size=12,
             filled=True,
             fill_color=SURFACE,
         )
 
         def apply(ev):
-            apply_output_dir(field.value)
-            page.pop_dialog()
-            page.update()
+            if apply_output_dir(field.value):
+                page.pop_dialog()
+                page.update()
 
         push_dialog("output")
         page.show_dialog(
@@ -2124,9 +2137,15 @@ def main(page: ft.Page):
             )
         )
 
+    output_dd.on_change = on_output_change
+
     def current_output_dir() -> str:
         before = preferences.load_output_dir()
-        target = preferences.ensure_output_dir()
+        try:
+            target = preferences.ensure_output_dir()
+        except preferences.OutputDirError as exc:
+            notify(str(exc))
+            return before or str(Path.cwd())
         if target != before:
             rebuild_output_options()
         return target
@@ -2764,6 +2783,17 @@ def main(page: ft.Page):
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
                 ft.Text("Explora por institución o palabra clave", size=12, color=MUTED),
+                ft.Container(
+                    visible=not catalog.has_fts5(),
+                    content=ft.Text(
+                        "Búsqueda simple: este dispositivo no incluye FTS5.",
+                        size=10,
+                        color=MUTED,
+                    ),
+                    padding=ft.Padding.symmetric(horizontal=10, vertical=6),
+                    bgcolor=ACCENT_SOFT,
+                    border_radius=8,
+                ),
                 search_bar,
                 ft.Row(
                     [institution_field, filters_toggle],

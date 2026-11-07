@@ -13,6 +13,7 @@ import os
 import re
 import sqlite3
 import time
+import unicodedata
 from collections.abc import Iterable
 
 import requests
@@ -54,7 +55,7 @@ _COLUMNS = {
 
 COLUMNS = _COLUMNS
 
-_SCHEMA = """
+_BASE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS series (
     id INTEGER PRIMARY KEY,
     institution TEXT NOT NULL DEFAULT 'bcrp',
@@ -67,15 +68,78 @@ CREATE TABLE IF NOT EXISTS series (
 CREATE INDEX IF NOT EXISTS idx_series_freq ON series(frequency);
 CREATE INDEX IF NOT EXISTS idx_series_cat ON series(category);
 CREATE INDEX IF NOT EXISTS idx_series_inst ON series(institution);
+PRAGMA user_version = 2;
+"""
+
+_FTS_SCHEMA = """
 CREATE VIRTUAL TABLE IF NOT EXISTS series_fts USING fts5(
     code, name, group_name, category, unit,
     content='series', content_rowid='id',
     tokenize="unicode61 remove_diacritics 2"
 );
-PRAGMA user_version = 2;
 """
 
 SCHEMA_VERSION = 2
+
+_FTS5_AVAILABLE: bool | None = None
+
+
+def has_fts5() -> bool:
+    """Indica si el SQLite en uso compila el módulo FTS5.
+
+    Android (y otras plataformas móviles) pueden traer SQLite sin FTS5. El
+    resultado se memoriza porque la capacidad no cambia en tiempo de ejecución.
+    """
+    global _FTS5_AVAILABLE
+    if _FTS5_AVAILABLE is None:
+        try:
+            probe = sqlite3.connect(":memory:")
+            try:
+                probe.execute("CREATE VIRTUAL TABLE fts_probe USING fts5(x)")
+            finally:
+                probe.close()
+            _FTS5_AVAILABLE = True
+        except sqlite3.Error:
+            _FTS5_AVAILABLE = False
+    return _FTS5_AVAILABLE
+
+
+def _schema(fts5: bool | None = None) -> str:
+    """Esquema del catálogo; incluye FTS5 solo si está disponible."""
+    if fts5 is None:
+        fts5 = has_fts5()
+    return _BASE_SCHEMA + (_FTS_SCHEMA if fts5 else "")
+
+
+# Compatibilidad con pruebas y herramientas que esperan el esquema completo.
+_SCHEMA = _schema(True)
+
+
+def _has_fts_table(conn: sqlite3.Connection) -> bool:
+    try:
+        return (
+            conn.execute(
+                "SELECT 1 FROM sqlite_master"
+                " WHERE type = 'table' AND name = 'series_fts'"
+            ).fetchone()
+            is not None
+        )
+    except sqlite3.Error:
+        return False
+
+
+def _rebuild_fts(conn: sqlite3.Connection) -> None:
+    """Reconstruye el índice FTS5 solo si existe y el motor lo soporta."""
+    if has_fts5() and _has_fts_table(conn):
+        conn.execute("INSERT INTO series_fts(series_fts) VALUES('rebuild')")
+
+
+def _fold(text: str) -> str:
+    """Minúsculas y sin tildes, para la búsqueda LIKE de respaldo."""
+    decomposed = unicodedata.normalize("NFKD", str(text))
+    return "".join(
+        char for char in decomposed if not unicodedata.combining(char)
+    ).lower()
 
 
 def download_catalog_csv(dest: str = METADATA_PATH, force: bool = False) -> str:
@@ -135,7 +199,7 @@ def build_catalog(csv_path: str = METADATA_PATH, db_path: str = CATALOG_PATH) ->
 
     conn = sqlite3.connect(tmp)
     try:
-        conn.executescript(_SCHEMA)
+        conn.executescript(_schema())
         conn.executemany(
             "INSERT INTO series (" + ", ".join(_UPSERT_COLUMNS) + ") VALUES ("
             + ",".join("?" * len(_UPSERT_COLUMNS)) + ")",
@@ -150,7 +214,7 @@ def build_catalog(csv_path: str = METADATA_PATH, db_path: str = CATALOG_PATH) ->
                 + ")",
                 preserved,
             )
-        conn.execute("INSERT INTO series_fts(series_fts) VALUES('rebuild')")
+        _rebuild_fts(conn)
         conn.commit()
     finally:
         conn.close()
@@ -164,9 +228,27 @@ def _schema_ok(db_path: str) -> bool:
         conn = sqlite3.connect(db_path)
         try:
             version = conn.execute("PRAGMA user_version").fetchone()[0]
+            has_series = _has_table(conn, "series")
+            has_fts = _has_fts_table(conn)
         finally:
             conn.close()
-        return int(version) == SCHEMA_VERSION
+    except sqlite3.Error:
+        return False
+    if int(version) != SCHEMA_VERSION or not has_series:
+        return False
+    # Si el motor soporta FTS5 y la tabla falta, conviene reconstruir.
+    return not (has_fts5() and not has_fts)
+
+
+def _has_table(conn: sqlite3.Connection, name: str) -> bool:
+    try:
+        return (
+            conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+                (name,),
+            ).fetchone()
+            is not None
+        )
     except sqlite3.Error:
         return False
 
@@ -220,16 +302,20 @@ _OPERATORS = {"AND", "OR", "NOT"}
 _TOKEN_RE = re.compile(r'"(?:[^"\\]|\\.)*"|\(|\)|[^\s()]+')
 
 
-def _simple_fts(text: str) -> str:
-    """Búsqueda tolerante: todos los términos como prefijos unidos por AND."""
-    tokens = [
+def _terms(text: str) -> list[str]:
+    """Palabras útiles de una consulta, sin operadores booleanos."""
+    return [
         token
         for token in "".join(
             char if char.isalnum() else " " for char in text
         ).split()
         if token and token.upper() not in _OPERATORS
     ]
-    return " ".join(f'"{token}"*' for token in tokens)
+
+
+def _simple_fts(text: str) -> str:
+    """Búsqueda tolerante: todos los términos como prefijos unidos por AND."""
+    return " ".join(f'"{token}"*' for token in _terms(text))
 
 
 def _quote(value: str) -> str:
@@ -374,7 +460,8 @@ def search(
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        match = _fts_query(query)
+        fts_ready = has_fts5() and _has_fts_table(conn)
+        match = _fts_query(query) if fts_ready else ""
         if match:
             sql = ("SELECT s.*, bm25(series_fts) AS score FROM series_fts"
                    " JOIN series s ON s.id = series_fts.rowid"
@@ -383,6 +470,23 @@ def search(
         else:
             sql = "SELECT s.*, 0.0 AS score FROM series s WHERE 1=1"
             params = []
+            terms = _terms(query)
+            if terms:
+                # Respaldo sin FTS5: texto plegado (sin tildes) y LIKE por
+                # término. Suficiente para el catálogo de ~21k series.
+                conn.create_function(
+                    "unaccent", 1, _fold, deterministic=True
+                )
+                haystack = (
+                    "unaccent(COALESCE(s.code, '') || ' '"
+                    " || COALESCE(s.name, '') || ' '"
+                    " || COALESCE(s.group_name, '') || ' '"
+                    " || COALESCE(s.category, '') || ' '"
+                    " || COALESCE(s.unit, ''))"
+                )
+                for term in terms:
+                    sql += f" AND {haystack} LIKE ?"
+                    params.append(f"%{_fold(term)}%")
 
         exact = {
             "s.institution": institution,
@@ -421,8 +525,10 @@ def search(
             return [dict(row) for row in conn.execute(sql, params)]
         except sqlite3.OperationalError:
             # Expresión avanzada inválida: reintenta con la búsqueda simple.
+            if not match:
+                raise
             simple = _simple_fts(query)
-            if not simple or not params:
+            if not simple:
                 raise
             params[0] = simple
             return [dict(row) for row in conn.execute(sql, params)]
@@ -522,7 +628,7 @@ _UPSERT_COLUMNS = (
 
 
 def upsert(rows: Iterable[dict], db_path: str | None = None) -> int:
-    """Inserta o actualiza series y reconstruye el índice FTS5.
+    """Inserta o actualiza series y reconstruye el índice FTS5 si existe.
 
     Se usa para catálogos que crecen bajo demanda (p. ej. MEF). Devuelve el
     número de filas escritas.
@@ -541,7 +647,7 @@ def upsert(rows: Iterable[dict], db_path: str | None = None) -> int:
             + ")",
             [tuple(row.get(column, "") for column in _UPSERT_COLUMNS) for row in rows],
         )
-        conn.execute("INSERT INTO series_fts(series_fts) VALUES('rebuild')")
+        _rebuild_fts(conn)
         conn.commit()
         return len(rows)
     finally:
@@ -572,7 +678,7 @@ def clear_institution(institution: str, db_path: str | None = None) -> int:
         cursor = conn.execute(
             "DELETE FROM series WHERE institution = ?", (institution,)
         )
-        conn.execute("INSERT INTO series_fts(series_fts) VALUES('rebuild')")
+        _rebuild_fts(conn)
         conn.commit()
         return int(cursor.rowcount)
     finally:
@@ -587,7 +693,7 @@ def clear_prefix(prefix: str, db_path: str | None = None) -> int:
         cursor = conn.execute(
             "DELETE FROM series WHERE code LIKE ?", (f"{prefix.upper()}%",)
         )
-        conn.execute("INSERT INTO series_fts(series_fts) VALUES('rebuild')")
+        _rebuild_fts(conn)
         conn.commit()
         return int(cursor.rowcount)
     finally:

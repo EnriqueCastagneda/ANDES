@@ -175,13 +175,32 @@ En la cabecera del panel derecho, junto a la campana:
 - **Tema**: alterna claro/oscuro.
 - **Menú** (☰):
   - **Carpeta de guardado**: se define en la primera descarga y puede cambiarse
-    con el desplegable o con «Otra carpeta…». Se guarda en `data/prefs.json`.
+    con el desplegable o con «Otra carpeta…». La ruta se normaliza (`~`,
+    variables de entorno), se crea si falta y se comprueba que admita escritura
+    antes de guardarla.
   - **Reiniciar** (`Ctrl+R` en escritorio; recarga en web).
   - **Acerca de ANDES**.
   - **Salir** (`Ctrl+Q` en escritorio).
 - `Escape` cierra el menú.
 
 Los navegadores pueden interceptar `Ctrl+R`/`Ctrl+Q`; en web usa los botones.
+
+### Rutas de datos y configuración
+
+Orden de prioridad:
+
+1. `ANDES_DATA_DIR` y `ANDES_CONFIG_DIR` (variables de entorno).
+2. `FLET_APP_STORAGE_DATA` en apps empaquetadas con Flet.
+3. Directorio del usuario si el ejecutable está congelado:
+   - Linux: `$XDG_DATA_HOME/andes` y `$XDG_CONFIG_HOME/andes`
+     (`~/.local/share/andes`, `~/.config/andes`).
+   - macOS: `~/Library/Application Support/andes`.
+   - Windows: `%LOCALAPPDATA%\ANDES` y `%APPDATA%\ANDES`.
+4. Desarrollo desde el repositorio: `data/`.
+
+Las preferencias (`prefs.json`) se escriben de forma atómica. La carpeta de
+guardado se valida y se prueba con un archivo temporal; si una ruta guardada
+deja de existir o no admite escritura, se usa la predeterminada y se avisa.
 
 ### CLI
 

@@ -22,8 +22,14 @@ y versionado [SemVer](https://semver.org/lang/es/).
 - Menú de aplicación: carpeta de guardado persistente, reinicio, Acerca de y
   salida; tema movido a la cabecera.
 - Botón «Origen:» en los detalles, con URL del recurso y etiqueta API.
+- Catálogo con respaldo sin FTS5 (SQLite reducido en Android): búsqueda LIKE
+  sin tildes, aviso en la interfaz y sin referencias a tablas virtuales.
+- Rutas multiplataforma: XDG en Linux, Application Support en macOS y
+  LocalAppData en Windows; preferencias atómicas y validación de la carpeta de
+  guardado.
 - `index.html` propio con título, tema, fondo de carga y rutas únicas de
   favicon (`icons/andes-favicon.png`) y carga (`icons/loading-andes.png`).
+- Smoke test web CDP (`scripts/smoke_web.py`) conectado al job `web` de CI.
 
 ### Cambiado
 
@@ -33,6 +39,8 @@ y versionado [SemVer](https://semver.org/lang/es/).
 
 ### Corregido
 
+- `flet publish` web: sin hilos Python en Pyodide (pump de stderr, temporizador
+  de tema y descargas en serie) ya no falla con `can't start new thread`.
 - Descarga histórica MEF multi-año con caché.
 - XML con columnas numéricas.
 - Escape en todos los diálogos y paneles.

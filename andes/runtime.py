@@ -26,6 +26,17 @@ def _sanitize_ld_library_path():
     os.environ["LD_LIBRARY_PATH"] = ":".join(kept)
 
 
+def _running_in_pyodide() -> bool:
+    """Pyodide (Flet web estático) no soporta hilos Python."""
+    if sys.platform in {"emscripten", "wasi"}:
+        return True
+    try:
+        import pyodide  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
 def _filter_gdk_cursor_noise():
     """Suppress harmless Flutter/GTK teardown noise on stderr.
 
@@ -47,6 +58,8 @@ def _filter_gdk_cursor_noise():
     if not sys.platform.startswith("linux"):
         return
     if not os.environ.get("WAYLAND_DISPLAY"):
+        return
+    if _running_in_pyodide():
         return
 
     noise = (
