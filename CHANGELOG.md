@@ -29,6 +29,7 @@ y versionado [SemVer](https://semver.org/lang/es/).
   guardado.
 - `index.html` propio con título, tema, fondo de carga y rutas únicas de
   favicon (`icons/andes-favicon.png`) y carga (`icons/loading-andes.png`).
+- Smoke test web CDP (`scripts/smoke_web.py`) conectado al job `web` de CI.
 
 ### Cambiado
 
@@ -38,6 +39,8 @@ y versionado [SemVer](https://semver.org/lang/es/).
 
 ### Corregido
 
+- `flet publish` web: sin hilos Python en Pyodide (pump de stderr, temporizador
+  de tema y descargas en serie) ya no falla con `can't start new thread`.
 - Descarga histórica MEF multi-año con caché.
 - XML con columnas numéricas.
 - Escape en todos los diálogos y paneles.

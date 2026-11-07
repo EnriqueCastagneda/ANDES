@@ -105,7 +105,7 @@ jobs:
           path: artifact/*
           if-no-files-found: error
           retention-days: 14
-      - name: Smoke test web (strategy A: client + backend)
+      - name: "Smoke test web (strategy A: client + backend)"
         if: matrix.target == 'web'
         shell: bash
         run: |
@@ -113,18 +113,17 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e . websocket-client requests
           npx -y playwright install chromium
-          npx -y playwright install-deps chromium || true
-          ARTIFACT_DIR="artifact/andes-web-${{ steps.version.outputs.version }}"
-          if [[ "${{ steps.build.outputs.archive-path }}" == *.tar.gz ]]; then
-            tar -xzf "${{ steps.build.outputs.archive-path }}" -C "$ARTIFACT_DIR"
-          else
-            unzip -q -o "${{ steps.build.outputs.archive-path }}" -d "$ARTIFACT_DIR"
-          fi
+          export PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright"
           PORT=8551
-          python -m http.server "$PORT" --directory "$ARTIFACT_DIR" >/tmp/andes-web-server.log 2>&1 &
+          ANDES_OUTPUT_DIR="$PWD/outputs" python -m andes.cli.main gui --web --port "$PORT" \
+            >/tmp/andes-web-server.log 2>&1 &
           SERVER_PID=$!
           trap "kill $SERVER_PID 2>/dev/null || true" EXIT
-          sleep 2
+          for _ in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${PORT}/" || true)
+            [[ "$code" == "200" ]] && break
+            sleep 1
+          done
           python scripts/smoke_web.py --url "http://127.0.0.1:${PORT}/" --timeout 120
 
   publish-pypi:
