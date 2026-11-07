@@ -8,6 +8,16 @@ from pathlib import Path
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = PACKAGE_ROOT.parent
+
+
+def _home() -> Path:
+    """Carpeta del usuario; si no hay USERPROFILE/HOME, usa el cwd."""
+    try:
+        return Path.home()
+    except RuntimeError:
+        return Path.cwd()
+
+
 # Prefer the repository assets; fall back to the assets shipped in the wheel.
 ASSETS_DIR = str(
     PROJECT_ROOT / "assets"
@@ -19,13 +29,13 @@ def _user_data_dir() -> Path:
     """Directorio de datos por usuario (XDG en Linux, LocalAppData en Windows)."""
     if os.name == "nt":
         base = os.environ.get("LOCALAPPDATA") or str(
-            Path.home() / "AppData" / "Local"
+            _home() / "AppData" / "Local"
         )
         return Path(base) / "ANDES"
     if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "andes"
+        return _home() / "Library" / "Application Support" / "andes"
     base = os.environ.get("XDG_DATA_HOME") or str(
-        Path.home() / ".local" / "share"
+        _home() / ".local" / "share"
     )
     return Path(base) / "andes"
 
@@ -34,12 +44,12 @@ def _user_config_dir() -> Path:
     """Directorio de configuración por usuario (XDG_CONFIG_HOME en Linux)."""
     if os.name == "nt":
         base = os.environ.get("APPDATA") or str(
-            Path.home() / "AppData" / "Roaming"
+            _home() / "AppData" / "Roaming"
         )
         return Path(base) / "ANDES"
     if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "andes"
-    base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
+        return _home() / "Library" / "Application Support" / "andes"
+    base = os.environ.get("XDG_CONFIG_HOME") or str(_home() / ".config")
     return Path(base) / "andes"
 
 
