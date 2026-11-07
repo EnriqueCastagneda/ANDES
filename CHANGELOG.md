@@ -41,6 +41,10 @@ y versionado [SemVer](https://semver.org/lang/es/).
 
 - `flet publish` web: sin hilos Python en Pyodide (pump de stderr, temporizador
   de tema y descargas en serie) ya no falla con `can't start new thread`.
+- Reinicio en Windows: `os.execv` bloqueaba el proceso original; ahora se
+  relanza con `subprocess.Popen` y se termina el actual.
+- `Path.home()` con fallback al cwd cuando no hay `USERPROFILE`/`HOME`
+  (servicios y CI en Windows).
 - Descarga histórica MEF multi-año con caché.
 - XML con columnas numéricas.
 - Escape en todos los diálogos y paneles.
