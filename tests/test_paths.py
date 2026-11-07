@@ -10,12 +10,14 @@ from andes.core import paths
 
 
 def test_xdg_data_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(paths.os, "name", "posix")
     monkeypatch.setattr(paths.sys, "platform", "linux")
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "share"))
     assert paths._user_data_dir() == tmp_path / "share" / "andes"
 
 
 def test_xdg_config_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(paths.os, "name", "posix")
     monkeypatch.setattr(paths.sys, "platform", "linux")
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     assert paths._user_config_dir() == tmp_path / "config" / "andes"

@@ -77,6 +77,7 @@ def test_empty_and_null_paths_are_rejected(prefs):
             preferences.normalize_output_path(value)
 
 
+@pytest.mark.skipif(os.name == "nt", reason="Windows no aplica permisos POSIX")
 @pytest.mark.skipif(
     getattr(os, "geteuid", lambda: 1)() == 0, reason="root ignora permisos"
 )
@@ -143,6 +144,7 @@ def test_macos_data_path(prefs, tmp_path, monkeypatch):
     """macOS: datos y configuración en ~/Library/Application Support/andes."""
     from andes.core import paths
 
+    monkeypatch.setattr(paths.os, "name", "posix")
     monkeypatch.setattr(paths.sys, "platform", "darwin")
     expected = Path.home() / "Library" / "Application Support" / "andes"
     assert paths._user_data_dir() == expected
