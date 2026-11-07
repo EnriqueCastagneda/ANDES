@@ -10,6 +10,7 @@ import json
 import os
 import re
 import tempfile
+import unicodedata
 from pathlib import Path
 
 from .paths import CONFIG_DIR, DATA_DIR, _home
@@ -69,7 +70,10 @@ def save_prefs(**updates) -> dict:
 def load_output_dir() -> str:
     """Carpeta persistida, o cadena vacía si aún no se eligió."""
     value = load_prefs().get("output_dir")
-    return value.strip() if isinstance(value, str) else ""
+    if not isinstance(value, str):
+        return ""
+    # Rutas guardadas en macOS pueden venir en NFD; normaliza a NFC.
+    return unicodedata.normalize("NFC", value.strip())
 
 
 def save_output_dir(path: str) -> str:
@@ -98,6 +102,9 @@ def normalize_output_path(path: str) -> str:
     if "\x00" in raw:
         raise OutputDirError("La ruta contiene caracteres no válidos.")
     expanded = os.path.expandvars(os.path.expanduser(raw))
+    # macOS (HFS+/APFS) guarda nombres con acentos en NFD; normaliza a NFC
+    # para que las rutas guardadas y generadas sean comparables.
+    expanded = unicodedata.normalize("NFC", expanded)
     if os.name == "nt":
         _validate_windows_path(expanded)
     try:
