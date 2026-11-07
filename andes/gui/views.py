@@ -6,14 +6,16 @@ import asyncio
 import json
 import os
 import re
+import sys
 import time
 from datetime import datetime
+from pathlib import Path
 
 import flet as ft
 import pandas as pd
 
 from .. import APP_NAME, APP_TAGLINE, APP_VERSION
-from ..core import branding, gobpe, portals
+from ..core import branding, gobpe, portals, preferences
 from ..core.adapters import get_adapter
 from ..core.api import (
     EXPORT_FORMATS,
@@ -37,7 +39,7 @@ from ..core.metadata import (
     search_catalog,
     series_info,
 )
-from ..core.paths import ASSETS_DIR, DATA_DIR, OUTPUT_DIR
+from ..core.paths import ASSETS_DIR, DATA_DIR
 from ..core.sources import get_source
 from .theme import ThemeController
 
@@ -97,7 +99,6 @@ def main(page: ft.Page):
     )
 
     os.makedirs(DATA_DIR, exist_ok=True)
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     # --- Notificaciones: toasts cronológicos + historial de sesión ---
     notifications = []
@@ -1021,7 +1022,10 @@ def main(page: ft.Page):
                 if not silent:
                     notify(f"Error API: {ex}")
                 return None
-            filepath = os.path.join(OUTPUT_DIR, f"bcrp_serie_{safe_code}_{start}_to_{end}.xls")
+            filepath = os.path.join(
+                current_output_dir(),
+                f"bcrp_serie_{safe_code}_{start}_to_{end}.xls",
+            )
             with open(filepath, "wb") as f:
                 f.write(content)
             if not silent:
@@ -1071,7 +1075,9 @@ def main(page: ft.Page):
             df_result = periods_to_dataframe(data, code)
 
         try:
-            filepath = export_series(df_result, code, start, end, fmt)
+            filepath = export_series(
+                df_result, code, start, end, fmt, out_dir=current_output_dir()
+            )
         except Exception as ex:
             if not silent:
                 notify(f"Error al exportar: {ex}")
@@ -1223,7 +1229,10 @@ def main(page: ft.Page):
                                 failed += 1
                                 continue
                             try:
-                                export_series(subset, code, start, end, fmt)
+                                export_series(
+                                    subset, code, start, end, fmt,
+                                    out_dir=current_output_dir(),
+                                )
                                 saved += 1
                             except Exception:
                                 failed += 1
@@ -1407,7 +1416,10 @@ def main(page: ft.Page):
         if fmt == "xls":
             fmt = "csv"  # xls sólo aplica a series
         try:
-            filepath = export_table(df, "bcrp_listado_filtrado", fmt)
+            filepath = export_table(
+                df, "bcrp_listado_filtrado", fmt,
+                out_dir=current_output_dir(),
+            )
         except Exception as ex:
             notify(f"Error al exportar: {ex}")
             return
@@ -1539,7 +1551,19 @@ def main(page: ft.Page):
     async def on_keyboard(e):
         raw = e.key or ""
         key = raw.replace(" ", "").lower()
+        if getattr(e, "ctrl", False) and key == "r":
+            if getattr(page, "web", False):
+                page.run_task(reload_page)
+            else:
+                restart_app()
+            return
+        if getattr(e, "ctrl", False) and key == "q":
+            exit_app()
+            return
         if key == "escape":
+            if menu_state.get("open"):
+                close_menu()
+                return
             if history_state.get("open"):
                 close_history()
                 return
@@ -1961,6 +1985,213 @@ def main(page: ft.Page):
         tooltip="Notificaciones",
     )
 
+    # --- Carpeta de guardado y menú de aplicación ---
+    menu_state = {"open": False}
+
+    def output_candidates() -> list[str]:
+        home = Path.home()
+        values = [
+            preferences.load_output_dir(),
+            preferences.default_output_dir(),
+            str(home / "Downloads" / "ANDES"),
+            str(home / "Documents" / "ANDES"),
+            str(home / "Escritorio" / "ANDES"),
+            str(Path.cwd() / "outputs"),
+        ]
+        return list(dict.fromkeys(value for value in values if value))
+
+    output_dd = ft.Dropdown(
+        label="Carpeta de guardado",
+        value=preferences.load_output_dir(),
+        dense=True,
+        filled=True,
+        fill_color=SURFACE,
+        text_size=12,
+        options=[ft.dropdown.Option(key="", text="Predeterminada (al descargar)")]
+        + [ft.dropdown.Option(key=path, text=path) for path in output_candidates()],
+        border=ft.OutlineInputBorder(
+            border_radius=10, side=ft.BorderSide(1, BORDER)
+        ),
+    )
+    def rebuild_output_options():
+        current = preferences.load_output_dir()
+        output_dd.options = [
+            ft.dropdown.Option(key="", text="Predeterminada (al descargar)")
+        ] + [ft.dropdown.Option(key=path, text=path) for path in output_candidates()]
+        output_dd.value = current
+        refresh(output_dd)
+
+    def apply_output_dir(path: str, notify_user: bool = True):
+        target = os.path.expanduser((path or "").strip())
+        if not target:
+            rebuild_output_options()
+            return
+        try:
+            os.makedirs(target, exist_ok=True)
+        except OSError as exc:
+            notify(f"No se pudo crear la carpeta: {exc}")
+            return
+        preferences.save_output_dir(target)
+        rebuild_output_options()
+        if notify_user:
+            notify(f"Carpeta de guardado: {target}", ft.Colors.GREEN)
+
+    def open_output_dialog(e=None):
+        close_menu()
+        field = ft.TextField(
+            label="Ruta de guardado",
+            value=preferences.load_output_dir(),
+            hint_text="/home/usuario/Documentos/ANDES",
+            text_size=12,
+            filled=True,
+            fill_color=SURFACE,
+        )
+
+        def apply(ev):
+            apply_output_dir(field.value)
+            page.pop_dialog()
+            page.update()
+
+        push_dialog("output")
+        page.show_dialog(
+            ft.AlertDialog(
+                modal=True,
+                bgcolor=SURFACE,
+                shape=ft.RoundedRectangleBorder(radius=16),
+                title=ft.Text(
+                    "Carpeta de guardado",
+                    size=18,
+                    weight=ft.FontWeight.W_700,
+                    color=TEXT,
+                ),
+                content=ft.Container(width=440, content=field),
+                actions=[
+                    ft.TextButton(
+                        "Cancelar",
+                        on_click=lambda ev: close_dialog(),
+                        style=ft.ButtonStyle(color=MUTED),
+                    ),
+                    ft.Button(
+                        "Aplicar",
+                        on_click=apply,
+                        style=ft.ButtonStyle(
+                            bgcolor=ACCENT,
+                            color=ON_ACCENT,
+                            shape=ft.RoundedRectangleBorder(radius=10),
+                        ),
+                    ),
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+                on_dismiss=lambda ev: drop_dialog("output"),
+            )
+        )
+
+    def current_output_dir() -> str:
+        before = preferences.load_output_dir()
+        target = preferences.ensure_output_dir()
+        if target != before:
+            rebuild_output_options()
+        return target
+
+    def close_menu():
+        menu_state["open"] = False
+        menu_panel.visible = False
+        refresh(menu_panel)
+
+    def toggle_menu(e=None):
+        menu_state["open"] = not menu_state["open"]
+        menu_panel.visible = menu_state["open"]
+        refresh(menu_panel)
+
+    async def reload_page():
+        try:
+            await url_launcher.launch_url(
+                ".", web_only_window_name="_self"
+            )
+        except Exception:
+            pass
+
+    def restart_app(e=None):
+        close_menu()
+        if getattr(page, "web", False):
+            page.run_task(reload_page)
+            return
+        try:
+            os.execv(sys.executable, [sys.executable, *sys.argv])
+        except Exception as exc:
+            notify(f"No se pudo reiniciar: {exc}")
+
+    def exit_app(e=None):
+        close_menu()
+        if getattr(page, "web", False):
+            notify("Cierra la pestaña para salir", ft.Colors.AMBER)
+            return
+        try:
+            page.window.close()
+        except Exception:
+            pass
+
+    menu_panel = ft.Container(
+        visible=False,
+        right=0,
+        top=44,
+        width=320,
+        padding=14,
+        bgcolor=SURFACE_2,
+        border=ft.Border.all(1, BORDER),
+        border_radius=12,
+        content=ft.Column(
+            [
+                output_dd,
+                ft.TextButton(
+                    "Otra carpeta…",
+                    icon=ft.Icons.FOLDER_OPEN,
+                    on_click=lambda e: open_output_dialog(),
+                    style=ft.ButtonStyle(color=ACCENT),
+                ),
+                ft.Divider(height=10, thickness=1, color=BORDER),
+                ft.TextButton(
+                    "Reiniciar",
+                    icon=ft.Icons.RESTART_ALT,
+                    tooltip="Ctrl+R",
+                    on_click=lambda e: restart_app(),
+                    style=ft.ButtonStyle(color=TEXT),
+                ),
+                ft.TextButton(
+                    "Acerca de ANDES",
+                    icon=ft.Icons.INFO_OUTLINE,
+                    on_click=lambda e: (close_menu(), show_about(e)),
+                    style=ft.ButtonStyle(color=TEXT),
+                ),
+                ft.TextButton(
+                    "Salir",
+                    icon=ft.Icons.LOGOUT,
+                    tooltip="Ctrl+Q",
+                    on_click=lambda e: exit_app(),
+                    style=ft.ButtonStyle(color=TEXT),
+                ),
+            ],
+            spacing=4,
+            tight=True,
+        ),
+    )
+    theme_btn = ft.IconButton(
+        icon=ft.Icons.LIGHT_MODE
+        if theme_controller.is_light
+        else ft.Icons.DARK_MODE,
+        icon_size=20,
+        icon_color=MUTED,
+        tooltip="Cambiar tema",
+        on_click=lambda e: toggle_theme(e),
+    )
+    menu_btn = ft.IconButton(
+        icon=ft.Icons.MENU,
+        icon_size=20,
+        icon_color=MUTED,
+        tooltip="Menú",
+        on_click=toggle_menu,
+    )
+
     def update_bell():
         count = unread["count"]
         bell_btn.tooltip = (
@@ -2061,20 +2292,7 @@ def main(page: ft.Page):
 
     footer = ft.Row(
         [
-            ft.TextButton(
-                "Acerca de ANDES",
-                icon=ft.Icons.INFO_OUTLINE,
-                on_click=show_about,
-                style=ft.ButtonStyle(color=MUTED, text_style=ft.TextStyle(size=12)),
-            ),
             ft.Container(expand=True),
-            ft.IconButton(
-                icon=ft.Icons.LIGHT_MODE if theme_controller.is_light else ft.Icons.DARK_MODE,
-                icon_size=18,
-                icon_color=MUTED,
-                tooltip="Cambiar tema",
-                on_click=lambda e: toggle_theme(e),
-            ),
             ft.Text(f"v{APP_VERSION}", size=11, color=MUTED),
         ],
         vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -2571,32 +2789,46 @@ def main(page: ft.Page):
         border_radius=12,
     )
 
+    header_row = ft.Row(
+        [
+            ft.Text(
+                "Parámetros",
+                size=18,
+                weight=ft.FontWeight.W_700,
+                color=TEXT,
+            ),
+            ft.Container(expand=True),
+            bell_btn,
+            theme_btn,
+            menu_btn,
+        ],
+        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+    )
     right_panel = ft.Container(
-        content=ft.Column(
+        content=ft.Stack(
             [
-                ft.Row(
+                ft.Column(
                     [
-                        ft.Text("Parámetros", size=18, weight=ft.FontWeight.W_700, color=TEXT),
-                        ft.Container(expand=True),
-                        bell_btn,
+                        header_row,
+                        params_hint,
+                        params_card,
+                        ft.Text("Detalles de la serie", size=12, color=MUTED),
+                        ft.Container(
+                            content=info_details,
+                            padding=14,
+                            bgcolor=SURFACE_2,
+                            border=ft.Border.all(1, BORDER),
+                            border_radius=12,
+                            expand=True,
+                        ),
                     ],
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                ),
-                params_hint,
-                params_card,
-                ft.Text("Detalles de la serie", size=12, color=MUTED),
-                ft.Container(
-                    content=info_details,
-                    padding=14,
-                    bgcolor=SURFACE_2,
-                    border=ft.Border.all(1, BORDER),
-                    border_radius=12,
+                    spacing=12,
                     expand=True,
+                    horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
                 ),
+                menu_panel,
             ],
-            spacing=12,
-            expand=True,
-            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+            clip_behavior=ft.ClipBehavior.NONE,
         ),
         height=620 if is_mobile else panel_height,
         padding=panel_padding,

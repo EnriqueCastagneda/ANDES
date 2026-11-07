@@ -270,13 +270,21 @@ def main() -> int:
         texts = browser.texts()
         joined = " ".join(texts).upper()
         check("render inicial", bool(texts), f"{len(texts)} nodos semánticos")
-        check("marca ANDES", "ACERCA DE ANDES" in joined
+        title = (browser.js("document.title") or "").upper()
+        check("marca ANDES", "ANDES" in title
               and "OPEN DATA PLATFORM" in joined)
         check("tema alterna", browser.click_label("Cambiar tema"))
         time.sleep(1.0)
         browser.shot("01b-tema.png")
 
-        # Sitios de datos: un enlace por institución
+        # Menú de aplicación
+        check("abrir menú", browser.click_label("Menú"))
+        time.sleep(1.5)
+        menu_text = " ".join(browser.texts()).upper()
+        check(
+            "menú de aplicación",
+            "OTRA CARPETA" in menu_text and "SALIR" in menu_text,
+        )
         check("abrir Acerca de", browser.click_semantics("Acerca de ANDES"))
         time.sleep(1.2)
         check("abrir Sitios", browser.click_semantics("Sitios"))

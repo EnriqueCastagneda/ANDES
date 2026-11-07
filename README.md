@@ -166,6 +166,21 @@ andes gui --web --port 8550
 
 También funciona `python app.py`.
 
+### Menú de aplicación
+
+En la cabecera del panel derecho, junto a la campana:
+
+- **Tema**: alterna claro/oscuro.
+- **Menú** (☰):
+  - **Carpeta de guardado**: se define en la primera descarga y puede cambiarse
+    con el desplegable o con «Otra carpeta…». Se guarda en `data/prefs.json`.
+  - **Reiniciar** (`Ctrl+R` en escritorio; recarga en web).
+  - **Acerca de ANDES**.
+  - **Salir** (`Ctrl+Q` en escritorio).
+- `Escape` cierra el menú.
+
+Los navegadores pueden interceptar `Ctrl+R`/`Ctrl+Q`; en web usa los botones.
+
 ### CLI
 
 ```bash

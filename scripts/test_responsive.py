@@ -50,7 +50,8 @@ def main() -> int:
                 )
                 time.sleep(1)
                 texts = " ".join(browser.texts()).upper()
-                if "ANDES" in texts and "SERIES" in texts:
+                title = (browser.js("document.title") or "").upper()
+                if "SERIES" in texts and "ANDES" in title:
                     ready = True
                     break
             overflow = browser.js(
