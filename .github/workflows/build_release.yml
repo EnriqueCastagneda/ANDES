@@ -105,6 +105,60 @@ jobs:
           path: artifact/*
           if-no-files-found: error
           retention-days: 14
+      - name: Verify macOS app bundle structure
+        if: matrix.target == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          UNZIP_DIR=$(mktemp -d)
+          unzip -q "${{ steps.build.outputs.archive-path }}" -d "$UNZIP_DIR"
+          APP_DIR="$UNZIP_DIR/andes-macos-${{ steps.version.outputs.version }}.app"
+          if [ ! -d "$APP_DIR" ]; then
+            echo "ERROR: .app directory missing in macOS bundle"
+            exit 1
+          fi
+          if [ ! -f "$APP_DIR/Contents/MacOS/andes" ]; then
+            echo "ERROR: Missing executable in Contents/MacOS"
+            exit 1
+          fi
+          echo "✅ macOS app bundle verified: $APP_DIR"
+      - name: Verify Linux bundle structure
+        if: matrix.target == 'linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARBALL="${{ steps.build.outputs.archive-path }}"
+          if ! tar -tzf "$TARBALL" | grep -q "^linux/andes$"; then
+            echo "ERROR: Missing linux/andes launcher in tarball"
+            exit 1
+          fi
+          if ! tar -tzf "$TARBALL" | grep -q "linux/app/andes/"; then
+            echo "ERROR: Missing linux/app/andes/ python package in tarball"
+            exit 1
+          fi
+          echo "✅ Linux bundle verified: $TARBALL"
+      - name: Verify Windows bundle structure
+        if: matrix.target == 'windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP="${{ steps.build.outputs.archive-path }}"
+          if ! unzip -l "$ZIP" | grep -q "andes.exe"; then
+            echo "ERROR: Missing andes.exe in windows archive"
+            exit 1
+          fi
+          echo "✅ Windows bundle verified: $ZIP"
+      - name: Verify Android APK exists
+        if: matrix.target == 'apk'
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="${{ steps.build.outputs.archive-path }}"
+          if [ ! -f "$APK" ]; then
+            echo "ERROR: APK not found at $APK"
+            exit 1
+          fi
+          echo "✅ Android APK verified: $APK"
       - name: "Smoke test web (strategy A: client + backend)"
         if: matrix.target == 'web'
         shell: bash

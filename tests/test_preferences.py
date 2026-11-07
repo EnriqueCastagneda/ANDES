@@ -116,3 +116,31 @@ def test_corrupt_prefs_are_ignored(prefs):
     prefs.write_text("{no-json", encoding="utf-8")
     assert preferences.load_prefs() == {}
     assert preferences.load_output_dir() == ""
+
+
+def test_normalize_output_path_normalizes_nfd_to_nfc(tmp_path, monkeypatch):
+    """macOS (HFS+/APFS) guarda acentos en NFD; la ruta debe guardarse en NFC."""
+    import unicodedata
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+    nfd = unicodedata.normalize("NFD", "andés salida")
+    out = preferences.normalize_output_path(nfd)
+    assert unicodedata.is_normalized("NFC", out)
+    assert out.endswith("andés salida")
+
+
+def test_load_output_dir_normalizes_nfd(tmp_path, monkeypatch):
+    monkeypatch.setattr(preferences, "PREFS_PATH", str(tmp_path / "prefs.json"))
+    import unicodedata
+
+    nfd = unicodedata.normalize("NFD", "/tmp/andés salida")
+    preferences.save_prefs(output_dir=nfd)
+    assert unicodedata.is_normalized("NFC", preferences.load_output_dir())
+
+
+def test_macos_data_path(prefs, tmp_path, monkeypatch):
+    """macOS: datos en ~/Library/Application Support/andes."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(preferences, "DATA_DIR", str(Path.home() / "Library" / "Application Support" / "andes"))
+    assert preferences.default_output_dir() == str(Path.home() / "Library" / "Application Support" / "andes")
