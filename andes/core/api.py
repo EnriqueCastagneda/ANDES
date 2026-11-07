@@ -93,11 +93,11 @@ def export_series(df, code, start, end, fmt, out_dir=None):
 
     Returns the full file path. Raises ValueError for unknown formats.
     """
-    if out_dir is None:
-        out_dir = OUTPUT_DIR
+    out_dir = out_dir or OUTPUT_DIR
     fmt = fmt.lower()
     if fmt not in ("csv", "json", "txt", "xml", "html", "xls"):
         raise ValueError(f"Formato no soportado: {fmt}")
+    os.makedirs(out_dir, exist_ok=True)
 
     safe_code = re.sub(r"[^\w\-_.]", "_", code.upper())
     if start in ("archivo", "snapshot"):
@@ -140,14 +140,15 @@ def find_pdf_url(text):
 
 def export_table(df, basename, fmt, out_dir=None):
     """Export an arbitrary DataFrame (e.g. a metadata listing) to disk."""
-    if out_dir is None:
-        out_dir = OUTPUT_DIR
+    out_dir = out_dir or OUTPUT_DIR
     fmt = fmt.lower()
     if fmt == "xls":
         raise ValueError("xls only supported for series downloads")
     if fmt not in ("csv", "json", "txt", "xml", "html"):
         raise ValueError(f"Formato no soportado: {fmt}")
-    filepath = os.path.join(out_dir, f"{basename}.{fmt}")
+    os.makedirs(out_dir, exist_ok=True)
+    safe_base = re.sub(r"[^\w\-_.]", "_", str(basename)).lstrip(".") or "andes_tabla"
+    filepath = os.path.join(out_dir, f"{safe_base}.{fmt}")
     if fmt == "csv":
         df.to_csv(filepath, index=False, encoding="utf-8-sig")
     elif fmt == "json":

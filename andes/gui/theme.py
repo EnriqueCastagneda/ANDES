@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import threading
 from datetime import datetime
 
@@ -16,6 +17,18 @@ import flet as ft
 
 from ..core import branding
 from ..core.paths import DATA_DIR
+
+
+def _running_in_pyodide() -> bool:
+    """Pyodide (Flet web estático) no soporta hilos Python."""
+    if sys.platform in {"emscripten", "wasi"}:
+        return True
+    try:
+        import pyodide  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
 
 DAY_START_HOUR = 6
 DAY_END_HOUR = 18
@@ -86,6 +99,8 @@ class ThemeController:
         self._schedule()
 
     def _schedule(self) -> None:
+        if _running_in_pyodide():
+            return
         self._timer = threading.Timer(60, self._tick)
         self._timer.daemon = True
         self._timer.start()

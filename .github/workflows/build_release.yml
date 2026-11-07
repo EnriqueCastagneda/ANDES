@@ -40,21 +40,26 @@ jobs:
   binaries:
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: linux
             os: ubuntu-latest
+            timeout: 45
           - target: windows
             os: windows-latest
+            timeout: 45
           - target: macos
             os: macos-latest
+            timeout: 45
           - target: apk
             os: ubuntu-latest
+            timeout: 90
           - target: web
             os: ubuntu-latest
+            timeout: 45
     steps:
       - uses: actions/checkout@v5
       - name: Resolve version
@@ -67,6 +72,13 @@ jobs:
             VERSION="2.0.0"
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+      - name: Smoke test without FTS5
+        if: matrix.target == 'apk'
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest
+          python -m pytest tests/test_catalog_fallback.py -q
       - name: Build with Flet
         id: build
         uses: flet-dev/flet-build-action@v1
@@ -74,8 +86,10 @@ jobs:
           target: ${{ matrix.target }}
           working-directory: .
           runner-python-version: "3.12"
+          bundled-python-version: "3.12"
           build-number: ${{ github.run_number }}
           build-version: ${{ steps.version.outputs.version }}
+          cache: true
           archive-output: true
       - name: Stage artifact
         shell: bash
@@ -91,6 +105,27 @@ jobs:
           path: artifact/*
           if-no-files-found: error
           retention-days: 14
+      - name: Smoke test web (strategy A: client + backend)
+        if: matrix.target == 'web'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install -e . websocket-client requests
+          npx -y playwright install chromium
+          npx -y playwright install-deps chromium || true
+          ARTIFACT_DIR="artifact/andes-web-${{ steps.version.outputs.version }}"
+          if [[ "${{ steps.build.outputs.archive-path }}" == *.tar.gz ]]; then
+            tar -xzf "${{ steps.build.outputs.archive-path }}" -C "$ARTIFACT_DIR"
+          else
+            unzip -q -o "${{ steps.build.outputs.archive-path }}" -d "$ARTIFACT_DIR"
+          fi
+          PORT=8551
+          python -m http.server "$PORT" --directory "$ARTIFACT_DIR" >/tmp/andes-web-server.log 2>&1 &
+          SERVER_PID=$!
+          trap "kill $SERVER_PID 2>/dev/null || true" EXIT
+          sleep 2
+          python scripts/smoke_web.py --url "http://127.0.0.1:${PORT}/" --timeout 120
 
   publish-pypi:
     name: Publish to PyPI
