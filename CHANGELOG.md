@@ -21,6 +21,7 @@ y versionado [SemVer](https://semver.org/lang/es/).
 - Pantalla de carga y manifiesto PWA con la identidad ANDES.
 - Menú de aplicación: carpeta de guardado persistente, reinicio, Acerca de y
   salida; tema movido a la cabecera.
+- Botón «Origen:» en los detalles, con URL del recurso y etiqueta API.
 - `index.html` propio con título, tema, fondo de carga y rutas únicas de
   favicon (`icons/andes-favicon.png`) y carga (`icons/loading-andes.png`).
 

@@ -36,6 +36,7 @@ from ..core.metadata import (
     institution_filter_options,
     institution_options,
     load_metadata,
+    origin_for,
     search_catalog,
     series_info,
 )
@@ -804,6 +805,43 @@ def main(page: ft.Page):
                     )
                 )
 
+        origin_url, origin_label = origin_for(values["Código"])
+        info_details.controls.append(
+            ft.Divider(height=10, thickness=1, color=BORDER)
+        )
+        info_details.controls.append(
+            ft.Row(
+                [
+                    ft.TextButton(
+                        "Origen:",
+                        icon=ft.Icons.OPEN_IN_NEW,
+                        tooltip=origin_url,
+                        on_click=lambda e, url=origin_url: page.run_task(
+                            open_portal, url
+                        ),
+                        style=ft.ButtonStyle(
+                            color=ACCENT,
+                            padding=ft.Padding.symmetric(
+                                horizontal=2, vertical=0
+                            ),
+                        ),
+                    ),
+                    ft.Container(
+                        content=ft.Text(
+                            origin_label, size=9, color=BADGE_TEXT
+                        ),
+                        bgcolor=ACCENT_SOFT,
+                        border_radius=6,
+                        padding=ft.Padding.symmetric(
+                            horizontal=8, vertical=2
+                        ),
+                        tooltip=origin_label,
+                    ),
+                ],
+                spacing=6,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            )
+        )
         refresh(info_details)
 
     # --- Filtros avanzados: sólo fechas ---
