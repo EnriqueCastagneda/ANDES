@@ -17,6 +17,7 @@ import json
 import os
 import random
 import sqlite3
+import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -25,6 +26,17 @@ from dataclasses import dataclass, field
 import requests
 
 from .paths import DATA_DIR
+
+
+def _running_in_pyodide() -> bool:
+    """Pyodide (flet publish) no admite hilos Python."""
+    if sys.platform in {"emscripten", "wasi"}:
+        return True
+    try:
+        import pyodide  # noqa: F401
+    except ImportError:
+        return False
+    return True
 
 BASE_URL = "https://estadisticas.bcrp.gob.pe/estadisticas/series/api"
 MAX_BATCH = 10
@@ -279,6 +291,10 @@ def fetch_series(codes: list[str], start: str, end: str, frequency: str,
     unique = list(dict.fromkeys(codes))
     chunks = [unique[i:i + MAX_BATCH] for i in range(0, len(unique), MAX_BATCH)]
     result: dict[str, list[dict]] = {}
+    if _running_in_pyodide():
+        for chunk in chunks:
+            result.update(fetch_chunk(chunk, start, end, frequency, lang))
+        return result
     with ThreadPoolExecutor(max_workers=max(1, min(workers, 2))) as pool:
         futures = [pool.submit(fetch_chunk, chunk, start, end, frequency, lang)
                    for chunk in chunks]
