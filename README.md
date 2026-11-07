@@ -132,11 +132,6 @@ Descarga los archivos de la versión [v2.0.1](https://github.com/EnriqueCastagne
 | Android (APK) | [andes-apk-2.0.1.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.1/andes-apk-2.0.1.zip) |
 | Web | [andes-web-2.0.1.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.1/andes-web-2.0.1.zip) |
 
-> **macOS**: si el `.app` se descarga de Internet, Gatekeeper puede bloquearlo
-> por falta de firma. Ejecuta en Terminal:
-> `xattr -d com.apple.quarantine /Applications/ANDES.app`
-> (o Ctrl+clic → Abrir).
-
 Consulta la página de [releases](https://github.com/EnriqueCastagneda/ANDES/releases) para descargar otras versiones.
 <!-- DOWNLOADS:END -->
 
