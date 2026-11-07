@@ -10,12 +10,16 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = PACKAGE_ROOT.parent
 
 
-def _home() -> Path:
+def home_dir() -> Path:
     """Carpeta del usuario; si no hay USERPROFILE/HOME, usa el cwd."""
     try:
         return Path.home()
     except RuntimeError:
         return Path.cwd()
+
+
+# Alias privado conservado para importaciones existentes.
+_home = home_dir
 
 
 # Prefer the repository assets; fall back to the assets shipped in the wheel.

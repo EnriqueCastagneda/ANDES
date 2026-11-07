@@ -9,7 +9,7 @@ from __future__ import annotations
 
 APP_NAME = "ANDES"
 APP_TAGLINE = "Open Data Platform"
-APP_VERSION = "2.0.0"
+APP_VERSION = "2.0.1"
 __version__ = APP_VERSION
 
 __all__ = ["APP_NAME", "APP_TAGLINE", "APP_VERSION", "__version__"]

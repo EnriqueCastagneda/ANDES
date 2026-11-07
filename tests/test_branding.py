@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import re
+from pathlib import Path
 
 import flet as ft
 
@@ -25,9 +27,18 @@ class _FakePage:
 def test_brand_names():
     assert APP_NAME == "ANDES"
     assert APP_TAGLINE == "Open Data Platform"
-    assert APP_VERSION == "2.0.0"
     assert branding.ACRONYM_ES.startswith("Archivo Nacional")
     assert branding.ACRONYM_EN.startswith("Andean Network")
+
+
+def test_version_matches_pyproject():
+    pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    declared = re.search(
+        r'^version = "([^"]+)"', pyproject.read_text(encoding="utf-8"), re.MULTILINE
+    )
+    assert declared, "pyproject.toml must declare a static version"
+    assert APP_VERSION == declared.group(1)
+    assert branding.APP_VERSION == declared.group(1)
 
 
 def test_required_colors_are_exact():

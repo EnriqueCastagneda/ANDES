@@ -69,7 +69,7 @@ jobs:
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
           else
-            VERSION="2.0.0"
+            VERSION="2.0.1"
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
       - name: Smoke test without FTS5
@@ -112,8 +112,8 @@ jobs:
           set -euo pipefail
           UNZIP_DIR=$(mktemp -d)
           unzip -q "${{ steps.build.outputs.archive-path }}" -d "$UNZIP_DIR"
-          APP_DIR="$UNZIP_DIR/andes-macos-${{ steps.version.outputs.version }}.app"
-          if [ ! -d "$APP_DIR" ]; then
+          APP_DIR=$(find "$UNZIP_DIR" -maxdepth 1 -type d -name "*.app" -print -quit)
+          if [ -z "$APP_DIR" ]; then
             echo "ERROR: .app directory missing in macOS bundle"
             exit 1
           fi
@@ -156,6 +156,10 @@ jobs:
           APK="${{ steps.build.outputs.archive-path }}"
           if [ ! -f "$APK" ]; then
             echo "ERROR: APK not found at $APK"
+            exit 1
+          fi
+          if ! unzip -l "$APK" | grep -qE '\.apk$'; then
+            echo "ERROR: No .apk file inside $APK"
             exit 1
           fi
           echo "✅ Android APK verified: $APK"

@@ -40,7 +40,7 @@ from ..core.metadata import (
     search_catalog,
     series_info,
 )
-from ..core.paths import ASSETS_DIR, DATA_DIR, _home
+from ..core.paths import ASSETS_DIR, DATA_DIR, home_dir
 from ..core.sources import get_source
 from .theme import ThemeController
 
@@ -2027,7 +2027,7 @@ def main(page: ft.Page):
     menu_state = {"open": False}
 
     def output_candidates() -> list[str]:
-        home = _home()
+        home = home_dir()
         values = [
             preferences.load_output_dir(),
             preferences.default_output_dir(),

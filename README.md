@@ -122,15 +122,15 @@ Una expresión inválida se reintenta como búsqueda simple por prefijos.
 ## Ejecutables compilados
 
 <!-- DOWNLOADS:START -->
-Descarga los archivos de la versión [v2.0.0](https://github.com/EnriqueCastagneda/ANDES/releases/tag/v2.0.0):
+Descarga los archivos de la versión [v2.0.1](https://github.com/EnriqueCastagneda/ANDES/releases/tag/v2.0.1):
 
 | Plataforma | Descarga |
 | --- | --- |
-| Linux | [andes-linux-2.0.0.tar.gz](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.0/andes-linux-2.0.0.tar.gz) |
-| Windows | [andes-windows-2.0.0.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.0/andes-windows-2.0.0.zip) |
-| macOS | [andes-macos-2.0.0.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.0/andes-macos-2.0.0.zip) |
-| Android (APK) | [andes-apk-2.0.0.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.0/andes-apk-2.0.0.zip) |
-| Web | [andes-web-2.0.0.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.0/andes-web-2.0.0.zip) |
+| Linux | [andes-linux-2.0.1.tar.gz](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.1/andes-linux-2.0.1.tar.gz) |
+| Windows | [andes-windows-2.0.1.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.1/andes-windows-2.0.1.zip) |
+| macOS | [andes-macos-2.0.1.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.1/andes-macos-2.0.1.zip) |
+| Android (APK) | [andes-apk-2.0.1.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.1/andes-apk-2.0.1.zip) |
+| Web | [andes-web-2.0.1.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.1/andes-web-2.0.1.zip) |
 
 > **macOS**: si el `.app` se descarga de Internet, Gatekeeper puede bloquearlo
 > por falta de firma. Ejecuta en Terminal:
@@ -302,7 +302,7 @@ ANDES/
 │   ├── cli/           # main.py (Typer)
 │   └── mcp/           # server.py
 ├── assets/            # logotipo, isotipo, iconos
-├── docs/              # identidad, portales, publicación
+├── docs/              # identidad, portales, publicación, builds
 ├── fixtures/          # contratos de portales
 ├── scripts/           # descubrimiento, eval web, pruebas
 ├── tests/
@@ -339,8 +339,8 @@ fuentes externas.
 Publicar una versión:
 
 ```bash
-git tag -a v2.0.0 -m "ANDES v2.0.0"
-git push origin v2.0.0
+git tag -a v2.0.1 -m "ANDES v2.0.1"
+git push origin v2.0.1
 ```
 
 ## Fuentes de datos

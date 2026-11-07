@@ -13,7 +13,7 @@ import tempfile
 import unicodedata
 from pathlib import Path
 
-from .paths import CONFIG_DIR, DATA_DIR, _home
+from .paths import CONFIG_DIR, DATA_DIR, home_dir
 
 PREFS_PATH = os.path.join(CONFIG_DIR, "prefs.json")
 
@@ -150,7 +150,7 @@ def default_output_dir() -> str:
     env = os.environ.get("ANDES_OUTPUT_DIR", "").strip()
     if env:
         return normalize_output_path(env)
-    home = _home()
+    home = home_dir()
     for base in (home / "Downloads", home / "Documents", home / "Escritorio"):
         if base.is_dir():
             return str(base / "ANDES")

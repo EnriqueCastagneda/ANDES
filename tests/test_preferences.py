@@ -140,7 +140,10 @@ def test_load_output_dir_normalizes_nfd(tmp_path, monkeypatch):
 
 
 def test_macos_data_path(prefs, tmp_path, monkeypatch):
-    """macOS: datos en ~/Library/Application Support/andes."""
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(preferences, "DATA_DIR", str(Path.home() / "Library" / "Application Support" / "andes"))
-    assert preferences.default_output_dir() == str(Path.home() / "Library" / "Application Support" / "andes")
+    """macOS: datos y configuración en ~/Library/Application Support/andes."""
+    from andes.core import paths
+
+    monkeypatch.setattr(paths.sys, "platform", "darwin")
+    expected = Path.home() / "Library" / "Application Support" / "andes"
+    assert paths._user_data_dir() == expected
+    assert paths._user_config_dir() == expected
