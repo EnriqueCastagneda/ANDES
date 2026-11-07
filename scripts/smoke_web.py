@@ -32,18 +32,26 @@ def _playwright_chromium():
         base = Path(env_path)
     else:
         base = Path.home() / ".cache/ms-playwright"
-    for path in base.glob("chrome-*/chrome-linux/chrome"):
-        return str(path)
+    # Playwright instala "chromium" y, según la versión, solo el
+    # "chromium_headless_shell". Acepta ambos layouts.
+    patterns = (
+        "chromium-*/chrome-linux/chrome",
+        "chrome-*/chrome-linux/chrome",
+        "chromium_headless_shell-*/chrome-linux/headless_shell",
+    )
+    for pattern in patterns:
+        for path in sorted(base.glob(pattern)):
+            return str(path)
     return None
 
 
 def _cdp(url: str, timeout: float = 90.0):
     """Abre Chromium headless, conecta por CDP y devuelve (ws, proc)."""
     binary = (
-        shutil.which("chromium")
+        _playwright_chromium()
+        or shutil.which("chromium")
         or shutil.which("chromium-browser")
         or shutil.which("google-chrome")
-        or _playwright_chromium()
     )
     if not binary:
         raise RuntimeError("No se encontró chromium en PATH")
