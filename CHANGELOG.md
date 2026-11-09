@@ -3,6 +3,16 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y versionado [SemVer](https://semver.org/lang/es/).
 
+## [Unreleased]
+
+### Corregido
+
+- Catálogo SQLite: la reconstrucción descarta filas incompletas y evita que un
+  código ajeno reemplace una serie oficial del BCRP. Se eliminó la fila vacía
+  «CHACHAPOYAS» y la serie `PD04746FA` volvió a la institución BCRP.
+- INEI Temático: la lectura de archivos descarta filas de encabezado
+  secundario antes de la primera fila de datos.
+
 ## [2.0.1] — 2026-11-06
 
 ### Añadido

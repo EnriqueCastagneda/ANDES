@@ -179,6 +179,9 @@ def build_catalog(csv_path: str = METADATA_PATH, db_path: str = CATALOG_PATH) ->
     """Reconstruye el catálogo BCRP sin borrar las demás instituciones."""
     os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
 
+    bcrp_rows = list(_rows(csv_path))
+    bcrp_codes = {row[1] for row in bcrp_rows}
+
     preserved: list[tuple] = []
     if os.path.exists(db_path):
         try:
@@ -192,6 +195,13 @@ def build_catalog(csv_path: str = METADATA_PATH, db_path: str = CATALOG_PATH) ->
                 source.close()
         except sqlite3.Error:
             preserved = []
+    # Descarta filas incompletas y códigos que pertenecen al CSV del BCRP:
+    # un código ajeno con el mismo texto no debe reemplazar la serie oficial.
+    preserved = [
+        row
+        for row in preserved
+        if row[0] and row[1] and row[1] not in bcrp_codes
+    ]
 
     tmp = f"{db_path}.part"
     if os.path.exists(tmp):
@@ -203,7 +213,7 @@ def build_catalog(csv_path: str = METADATA_PATH, db_path: str = CATALOG_PATH) ->
         conn.executemany(
             "INSERT INTO series (" + ", ".join(_UPSERT_COLUMNS) + ") VALUES ("
             + ",".join("?" * len(_UPSERT_COLUMNS)) + ")",
-            _rows(csv_path),
+            bcrp_rows,
         )
         if preserved:
             conn.executemany(
@@ -633,7 +643,11 @@ def upsert(rows: Iterable[dict], db_path: str | None = None) -> int:
     Se usa para catálogos que crecen bajo demanda (p. ej. MEF). Devuelve el
     número de filas escritas.
     """
-    rows = list(rows)
+    rows = [
+        row
+        for row in rows
+        if str(row.get("code", "")).strip()
+    ]
     if not rows:
         return 0
     db_path = db_path or ensure_catalog()

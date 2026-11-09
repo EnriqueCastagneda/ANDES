@@ -83,6 +83,22 @@ def test_header_detection_reads_years(tmp_path):
     assert frame.iloc[1]["2022"] == 7.7
 
 
+def test_header_detection_skips_secondary_header_rows(tmp_path):
+    path = tmp_path / "multi.xlsx"
+    book = openpyxl.Workbook()
+    sheet = book.active
+    sheet.append(["TÍTULO"])
+    sheet.append([])
+    sheet.append(["Ciudad", 2022, 2023])
+    sheet.append(["", "Oferta", "Demanda"])
+    sheet.append(["", "Producto", "Importaciones"])
+    sheet.append(["Total", 100.0, 105.0])
+    book.save(path)
+    frame = IneiTematicoAdapter._table(str(path), "xlsx")
+    assert frame.iloc[0, 0] == "Total"
+    assert len(frame) == 1
+
+
 def test_fetch_reads_indexed_file(monkeypatch, tmp_path):
     path = tmp_path / "pbi.xlsx"
     book = openpyxl.Workbook()

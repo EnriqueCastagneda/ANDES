@@ -45,6 +45,32 @@ def _clean(text: str) -> str:
     return re.sub(r"\s+", " ", (text or "").replace("\xa0", " ")).strip()
 
 
+def _trim_leading_headers(body: pd.DataFrame, limit: int = 20) -> pd.DataFrame:
+    """Quita filas de encabezado secundario antes de la primera fila de datos.
+
+    Los cuadros del INEI suelen tener dos o tres filas de títulos. Tras elegir
+    la fila principal, las filas siguientes todavía pueden ser encabezados de
+    columnas. Se descartan solo si son varias celdas de texto y ningún número,
+    y si más abajo aparece una fila con datos numéricos.
+    """
+    if body.empty:
+        return body
+    first_data = None
+    for index in range(min(limit, len(body))):
+        values = [value for value in body.iloc[index].tolist() if pd.notna(value)]
+        if any(_is_number(value) for value in values):
+            first_data = index
+            break
+    if not first_data:
+        return body
+    for index in range(first_data):
+        values = [value for value in body.iloc[index].tolist() if pd.notna(value)]
+        texts = [value for value in values if isinstance(value, str)]
+        if len(texts) < 2 or any(_is_number(value) for value in values):
+            return body
+    return body.iloc[first_data:].reset_index(drop=True)
+
+
 class _CategoryParser(HTMLParser):
     """Extrae categorías, secciones y archivos de una página del índice."""
 
@@ -306,7 +332,7 @@ class IneiTematicoAdapter:
         body = frame.iloc[header_row + 1:].copy()
         body.columns = unique
         body = body.dropna(how="all")
-        return body.reset_index(drop=True)
+        return _trim_leading_headers(body.reset_index(drop=True))
 
     def fetch(
         self,
