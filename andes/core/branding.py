@@ -17,7 +17,7 @@ APP_DESCRIPTION = (
     "Plataforma de acceso, integración, exploración y consulta de "
     "estadísticas y datos abiertos."
 )
-APP_VERSION = "2.0.1"
+APP_VERSION = "2.0.2"
 REPOSITORY_URL = "https://github.com/EnriqueCastagneda/ANDES"
 LICENSE_NAME = "GNU General Public License v3.0 or later"
 

@@ -122,15 +122,15 @@ Una expresión inválida se reintenta como búsqueda simple por prefijos.
 ## Ejecutables compilados
 
 <!-- DOWNLOADS:START -->
-Descarga los archivos de la versión [v2.0.1](https://github.com/EnriqueCastagneda/ANDES/releases/tag/v2.0.1):
+Descarga los archivos de la versión [v2.0.2](https://github.com/EnriqueCastagneda/ANDES/releases/tag/v2.0.2):
 
 | Plataforma | Descarga |
 | --- | --- |
-| Linux | [andes-linux-2.0.1.tar.gz](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.1/andes-linux-2.0.1.tar.gz) |
-| Windows | [andes-windows-2.0.1.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.1/andes-windows-2.0.1.zip) |
-| macOS | [andes-macos-2.0.1.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.1/andes-macos-2.0.1.zip) |
-| Android (APK) | [andes-apk-2.0.1.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.1/andes-apk-2.0.1.zip) |
-| Web | [andes-web-2.0.1.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.1/andes-web-2.0.1.zip) |
+| Linux | [andes-linux-2.0.2.tar.gz](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.2/andes-linux-2.0.2.tar.gz) |
+| Windows | [andes-windows-2.0.2.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.2/andes-windows-2.0.2.zip) |
+| macOS | [andes-macos-2.0.2.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.2/andes-macos-2.0.2.zip) |
+| Android (APK) | [andes-apk-2.0.2.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.2/andes-apk-2.0.2.zip) |
+| Web | [andes-web-2.0.2.zip](https://github.com/EnriqueCastagneda/ANDES/releases/download/v2.0.2/andes-web-2.0.2.zip) |
 
 Consulta la página de [releases](https://github.com/EnriqueCastagneda/ANDES/releases) para descargar otras versiones.
 <!-- DOWNLOADS:END -->
@@ -334,8 +334,8 @@ fuentes externas.
 Publicar una versión:
 
 ```bash
-git tag -a v2.0.1 -m "ANDES v2.0.1"
-git push origin v2.0.1
+git tag -a v2.0.2 -m "ANDES v2.0.2"
+git push origin v2.0.2
 ```
 
 ## Fuentes de datos

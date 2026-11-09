@@ -69,7 +69,7 @@ jobs:
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
           else
-            VERSION="2.0.1"
+            VERSION="2.0.2"
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
       - name: Smoke test without FTS5
